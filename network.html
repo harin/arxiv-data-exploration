@@ -1,0 +1,273 @@
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v5.min.js"></script>
+        <style type="text/css">
+            line {
+                stroke: rgba(0,0,0,0.5);
+            }
+
+            div.tooltip {	
+                position: absolute;			
+                text-align: center;			
+                padding: 10px;				
+                font: 12px sans-serif;		
+                background: white;
+                border: 1px solid black;		
+                border-radius: 3px;			
+                pointer-events: none;			
+            }
+
+            .tooltip #title {
+                font-weight: 600;
+            }
+
+            .paper {
+                fill: rgba(0,0,0,1);
+            }
+        </style>
+    </head>
+    <body>
+        <script>
+            d3.selection.prototype.moveToFront = function() {
+                return this.each(function(){
+                    this.parentNode.appendChild(this);
+                });
+            };
+
+
+            const margin = {
+                left: 0,
+                top: 0,
+                right: 0,
+                bottom: 0
+            }
+
+            const width = window.innerWidth
+            const height = window.innerHeight
+            
+            const maxAncestryLevel = 7
+
+            var minCite = 0
+            var maxCite = 100
+            var citationThres = 0
+            var ancestryThres = 3            
+            var filteredLinks = []
+
+
+            const zoom = d3.zoom()
+                .scaleExtent([1/4, 4])
+                .on("zoom", () => {
+                    networkGroup.attr("transform", d3.event.transform);
+                    hideTooltip()
+                })
+
+            const svg = d3.select('body').append('svg')
+                .attr('height', height)
+                .attr('width', width)
+                .append('g')
+                .call(zoom)
+
+            svg.append('g').append('rect')
+                .attr('height', height)
+                .attr('width', width)
+                .style('fill', '#fefefe')
+                .on('click', () => {
+                    hideTooltip()
+                    resetFocus()
+                })
+
+            const networkGroup = svg.append('g')
+
+            // Define the div for the tooltip
+            var tooltip = d3.select("body").append("div")	
+                .attr("class", "tooltip")				
+                .style("opacity", 0)
+                .style('width', 200)
+                .style('height', 'auto')
+            
+            tooltip.append('div').attr('id', 'title')
+            tooltip.append('div').attr('id', 'authors')
+            tooltip.append('div').attr('id', 'cited-times')
+
+            function hideTooltip() {
+                tooltip.style('display', 'none')
+            }
+
+            function resetFocus() {
+                svg.selectAll('circle')
+                    .transition().duration(200)
+                    .style('opacity', 1)
+                    .style('fill', 'black')
+                    .classed('focus', false)
+
+                svg.selectAll('.edge')
+                    .transition().duration(200)
+                    .style('opacity', 1)
+                    .style('stroke', 'black')
+            }
+        
+            async function main() {
+                const linkData = await d3.json('link.json')
+                const nodeData = await d3.json('top_paper.json')
+                filteredLinks = linkData
+                
+                const citations = nodeData.map(d => d.n_citation)
+                maxCite = d3.max(citations)
+                minCite = d3.min(citations)
+
+                const citationFilterInput = d3.select('body').append('div')
+                    .append('input')
+                        .attr('type', 'range')
+                        .attr('min', minCite)
+                        .attr('max', maxCite)
+                        .on('input', function() {
+                            citationThres = Number(this.value)
+                            filterLinks()
+                        })
+                        .style('position', 'absolute')
+                        .style('left', 10)
+                        .style('top', 10)
+                
+                const influenceScale = d3.scaleLog()
+                    .domain([minCite, maxCite])
+                    .range([3, 20])
+
+                // linkData = linkData.slice(0, 100)
+
+                const sim = d3.forceSimulation(nodeData)
+                    .force('charge', d3.forceManyBody())
+                    .force('collision', d3.forceCollide().radius((d) => influenceScale(d.n_citation)))
+                    .force('center', d3.forceCenter(width / 2, height / 2))
+                    .force('link', d3.forceLink().links(filteredLinks))
+                    .alphaDecay(0.1)
+                    .on('tick', ticked);
+
+                function filterLinks() {
+                    const filteredLinkIds = linkData.filter(d =>
+                        citations[d.target.index] > citationThres
+                    ).map(link => `#l${link.index}`)
+                    if (filteredLinkIds.length == 0) return;
+                    svg.selectAll('.edge').style('display', 'none')
+                    svg.selectAll(filteredLinkIds.join(','))
+                        .style('display', 'block')
+
+                }
+
+                function renderLinks() {
+                    var u = networkGroup
+                        .selectAll('line')
+                        .data(filteredLinks)
+
+                    u.enter()
+                        .append('line')
+                        .attr('class', 'edge')
+                        .attr('id', (d) => `l${d.index}`)
+                        .merge(u)
+                        .attr('x1', function(d) {
+                            return d.source.x
+                        })
+                        .attr('y1', function(d) {
+                            return d.source.y
+                        })
+                        .attr('x2', function(d) {
+                            return d.target.x
+                        })
+                        .attr('y2', function(d) {
+                            return d.target.y
+                        })
+
+                    u.exit().remove()
+                }
+
+                function renderCiter(nodeIndex, level = 0) {
+                    const focusLinkIds = []
+                    const sids = linkData.filter((link) => link.target.level_0 == nodeIndex)
+                        .map((link) => {
+                            if (level < ancestryThres) {
+                                renderCiter(link.source.level_0, level + 1)
+                            }
+                            focusLinkIds.push(`#l${link.index}`)
+                            return `#c${link.source.id}`
+                        })
+
+                        if (sids.length > 0) {
+                            
+                            const levelColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 2]
+
+                            d3.selectAll(sids.join(','))
+                                .transition()
+                                .delay(level * 200)
+                                .duration(300)
+                                .style('fill', levelColor)
+                                .style('opacity', 1)
+                                .classed('focus', true)
+                            
+                            d3.selectAll(focusLinkIds.join(','))
+                                .transition()
+                                .delay(level * 200)
+                                .duration(300)
+                                .style('stroke', levelColor)
+                                .style('opacity', 1)
+                        }
+                }
+
+
+                function renderNodes() {
+                    const u = networkGroup
+                        .selectAll('circle')
+                        .data(nodeData)
+                    
+                    const r = 5
+                    u.enter()
+                        .append('circle')
+                        .attr('class', 'paper')
+                        .attr('id', (d) => `c${d.id}`)
+                        .attr('r', (d) => influenceScale(d.n_citation))
+                        .merge(u)
+                        .attr('cx', function(d) {
+                            return d.x
+                        })
+                        .attr('cy', function(d) {
+                            return d.y
+                        })
+                        .on('click', function(d) {
+                            tooltip.transition()		
+                                .duration(200)
+                                .style('display', 'block')
+                                .style("opacity", .9)
+                            tooltip.select('#title').html(`${d.title} (${d.year})`)
+                            tooltip.select('#authors').html(d.authors)
+                            tooltip.select('#cited-times').html(`${d.n_citation} citations` )
+                            tooltip
+                                .style("left", (d3.event.pageX + 15 ) + "px")		
+                                .style("top", (d3.event.pageY ) + "px")
+                            
+                            networkGroup.selectAll('circle')
+                                .style('opacity', 0.1)  
+                            
+                            networkGroup.selectAll('.edge')
+                                .style('stroke', '#efefef')
+                                
+
+                            d3.select(this)
+                                .transition()
+                                .duration(100)
+                                    .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
+                                    .style('opacity', 1)
+                            
+                            renderCiter(d.index)
+
+                        })
+
+                    u.exit().remove()
+                }
+
+                function ticked() {
+                    renderLinks()
+                    renderNodes()
+                }
+            }
+            main()
+        </script>
+    </body>
+</html>
