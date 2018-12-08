@@ -24,7 +24,6 @@ library(gridExtra)
 library(reshape2)
 ```
 
-You can also embed plots, for example:
 
 ```{r}
 reference_path <- "ml_papers_reference.feather"
@@ -35,6 +34,18 @@ summary(papers_reference)
 ```{r}
 head(papers_reference)
 ```
+
+
+```{r}
+author_path <- "ml_papers_author.feather"
+papers_authors <- read_feather(author_path)
+summary(papers_authors)
+```
+
+```{r}
+head(papers_authors)
+```
+
 
 ```{r}
 papers_reference_citation <- subset(papers_reference[!duplicated(papers_reference[c("id")]),], select = -c(references) )
@@ -69,6 +80,32 @@ ggplot(melt(citation_summary, id.vars='year'),
   geom_bar(stat='identity', position='dodge')
 ```
 
+```{r}
+topic_freq <- dplyr::summarise(group_by(papers_reference_citation, year, topic),frequency =n())
 
+ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
+  geom_line() +
+  ggtitle("Number of Papers in each Topic Over Time")
+```
 
+```{r}
+top_10_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),total_citation =sum(n_citation)), desc(total_citation)), n=10)
+
+top_10_authors
+```
+
+```{r}
+papers_top_authors <- papers_authors %>% 
+  filter(authors %in% top_10_citation$authors)
+
+authors_citation <- dplyr::summarise(group_by(papers_top_authors, authors, year),yearly_citation =sum(n_citation))
+authors_citation
+
+cumsum_authors_citation <- authors_citation %>% group_by(authors) %>% mutate(cum_citations = cumsum(yearly_citation))
+
+ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) + 
+  geom_line() +
+  geom_point(size = 1) +
+  ggtitle("Number of Citations of top Authors Over Time")
+```
 
