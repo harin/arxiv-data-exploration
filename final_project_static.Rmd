@@ -96,7 +96,7 @@ top_10_authors
 
 ```{r}
 papers_top_authors <- papers_authors %>% 
-  filter(authors %in% top_10_citation$authors)
+  filter(authors %in% top_10_authors$authors)
 
 authors_citation <- dplyr::summarise(group_by(papers_top_authors, authors, year),yearly_citation =sum(n_citation))
 authors_citation
