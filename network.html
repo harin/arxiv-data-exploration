@@ -241,6 +241,7 @@
                     
                     infobox.transition()
                         .duration(500)
+                        .delay((d, i) => 100 + i * 50)
                         .style('display', 'block')
                         .style('opacity', 1)
                 }
