@@ -1,0 +1,74 @@
+---
+title: "Final Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exploratory Analysis
+
+
+```{r cars}
+library(ggplot2)
+library(tidyverse)
+library(extracat)
+library(tidyr)
+library(dplyr)
+library(lubridate)
+library(vcd)
+library(vcdExtra)
+library(feather)
+library(gridExtra)
+library(reshape2)
+```
+
+You can also embed plots, for example:
+
+```{r}
+reference_path <- "ml_papers_reference.feather"
+papers_reference <- read_feather(reference_path)
+summary(papers_reference)
+```
+
+```{r}
+head(papers_reference)
+```
+
+```{r}
+papers_reference_citation <- subset(papers_reference[!duplicated(papers_reference[c("id")]),], select = -c(references) )
+papers_reference_citation
+```
+```{r}
+ggplot(data=papers_reference_citation, aes(x=year)) +
+    geom_bar(stat="count")
+```
+
+```{r}
+ggplot(data=papers_reference_citation, aes(x = n_citation)) + 
+  geom_histogram(binwidth = 4, fill = 'cornflowerblue', color = 'grey') + 
+  ggtitle("Number of Citations per Paper") +
+  xlim(0, 100) +
+  ylab("count") + 
+  xlab("Number of Citations")
+```
+
+```{r}
+ggplot(papers_reference_citation, aes(year, n_citation)) +
+  geom_bar(stat="summary", fun.y="sum")
+```
+
+```{r}
+citation_summary <- papers_reference_citation %>%
+  group_by(year) %>%
+  summarise_each(funs(mean, median), n_citation)
+
+ggplot(melt(citation_summary, id.vars='year'), 
+       aes(x=year, y=value, fill=variable)) +
+  geom_bar(stat='identity', position='dodge')
+```
+
+
+
+
