@@ -101,6 +101,7 @@
             var citationThres = 0
             var ancestryThres = 3            
             var filteredLinks = []
+            var papers = []
 
 
             const zoom = d3.zoom()
@@ -147,17 +148,70 @@
             }
 
             function resetFocus() {
+                resetInfo()
+                svg.selectAll('#focus').remove()
+
                 svg.selectAll('circle')
                     .transition().duration(200)
-                    .style('opacity', 1)
+                    .style('opacity', null)
                     .style('fill', null)
                     .selection().classed('focus', false)
 
                 svg.selectAll('.edge')
                     .transition().duration(200)
-                    .style('opacity', 1)
+                    .style('opacity', null)
                     .style('stroke', null)
             }
+
+            function resetInfo() {
+                papers = []
+                renderInfo()
+            }
+
+            function renderInfo(paper) {
+                if (paper) {
+                    if (papers.length > 20) return
+                    if (!papers.find(p => p.id == paper.id)) {
+                        papers.push(paper)
+                    }
+                }
+                const infoHeight = 200
+                const infoMargin = 20
+                var infobox = sidebar.selectAll('div.info')
+                    .data(papers, (d) => d.id)
+
+                infobox.exit().remove()
+
+                const newBoxes = infobox.enter()
+                    .append('div')
+                        .classed('info', true)
+                newBoxes.append('div').attr('class','title')
+                newBoxes.append('div').attr('class','authors')
+                newBoxes.append('span').attr('class','citations')
+                newBoxes.append('a')
+
+                infobox = newBoxes.merge(infobox)
+
+                infobox.style('display', 'none')
+                    .style('opacity', 0)
+
+                infobox.select('.title').html((d) => `${d.title} (${d.year})`)
+                infobox.select('.authors').html((d) => d.authors.join(', '))
+                infobox.select('.citations').html((d) => `${d.n_citation} citations  ` )
+                infobox.select('a').attr('href', (d) => 
+                    `https://dblp.uni-trier.de/search?q=${encodeURIComponent(d.title + ' ' + d.authors[0])}`
+                    )
+                    .attr('target', '_blank')
+                    .html('link')
+                    .attr('id', d => d.id)
+                
+                infobox.transition()
+                    .duration(500)
+                    .delay((d, i) => 100 + i * 50)
+                    .style('display', 'block')
+                    .style('opacity', 1)
+            }
+
         
             async function main() {
                 const linkData = await d3.json('link.json')
@@ -199,57 +253,7 @@
                     .force('link', d3.forceLink().links(filteredLinks))
                     .alphaDecay(0.1)
                     .on('tick', ticked);
-                    
-                var papers = []
 
-                function resetInfo() {
-                    papers = []
-                    renderInfo()
-                }
-
-                function renderInfo(paper) {
-                    if (paper) {
-                        if (papers.length > 20) return
-                        if (!papers.find(p => p.id == paper.id)) {
-                            papers.push(paper)
-                        }
-                    }
-                    const infoHeight = 200
-                    const infoMargin = 20
-                    var infobox = sidebar.selectAll('div.info')
-                        .data(papers, (d) => d.id)
-
-                    infobox.exit().remove()
-
-                    const newBoxes = infobox.enter()
-                        .append('div')
-                            .classed('info', true)
-                    newBoxes.append('div').attr('class','title')
-                    newBoxes.append('div').attr('class','authors')
-                    newBoxes.append('span').attr('class','citations')
-                    newBoxes.append('a')
-
-                    infobox = newBoxes.merge(infobox)
-
-                    infobox.style('display', 'none')
-                        .style('opacity', 0)
-
-                    infobox.select('.title').html((d) => `${d.title} (${d.year})`)
-                    infobox.select('.authors').html((d) => d.authors.join(', '))
-                    infobox.select('.citations').html((d) => `${d.n_citation} citations  ` )
-                    infobox.select('a').attr('href', (d) => 
-                        `https://dblp.uni-trier.de/search?q=${encodeURIComponent(d.title + ' ' + d.authors[0])}`
-                        )
-                        .attr('target', '_blank')
-                        .html('link')
-                        .attr('id', d => d.id)
-                    
-                    infobox.transition()
-                        .duration(500)
-                        .delay((d, i) => 100 + i * 50)
-                        .style('display', 'block')
-                        .style('opacity', 1)
-                }
 
                 function filterLinks() {
                     const filteredLinkIds = linkData.filter(d =>
@@ -346,7 +350,7 @@
                                 .append('circle')
                                     .attr('class', 'paper')
                                     .style('fill', levelColor)
-                                    .style('opacity', 0.0)
+                                    .style('opacity', 0)
                                     .attr('id', (d) => `c${d.id}`)
                                     .attr('r', (d) => influenceScale(d.n_citation))
                                     .attr('cx', d => d.x)
@@ -373,7 +377,6 @@
                                 .style("top", (d3.event.pageY ) + "px")
                             
                             networkGroup.selectAll('circle')
-                                .style('fill', 'black')
                                 .style('opacity', 0.1)  
                             
                             networkGroup.selectAll('.edge')
@@ -384,9 +387,8 @@
                                 .transition()
                                 .duration(100)
                                     .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
-                                    .style('opacity', 1)
+                                    .style('opacity', null)
                             resetInfo()
-
 
                             renderCiter(d.index)
                 }
