@@ -24,6 +24,12 @@
             .paper {
                 fill: rgba(0,0,0,1);
             }
+
+            .edge {
+                fill: none;
+                stroke: rgba(0,0,0,0.5);
+                stroke-width: 1.5px;
+            }
         </style>
     </head>
     <body>
@@ -98,7 +104,7 @@
                     .transition().duration(200)
                     .style('opacity', 1)
                     .style('fill', 'black')
-                    .classed('focus', false)
+                    .selection().classed('focus', false)
 
                 svg.selectAll('.edge')
                     .transition().duration(200)
@@ -155,14 +161,17 @@
 
                 function renderLinks() {
                     var u = networkGroup
-                        .selectAll('line')
+                        .selectAll('path')
+                        // .selectAll('line')
                         .data(filteredLinks)
 
                     u.enter()
-                        .append('line')
+                        .append('path')
+                        // .append('line')
                         .attr('class', 'edge')
                         .attr('id', (d) => `l${d.index}`)
                         .merge(u)
+                        .attr('d', (d) => linkArc(d))
                         .attr('x1', function(d) {
                             return d.source.x
                         })
@@ -191,23 +200,29 @@
                         })
 
                         if (sids.length > 0) {
-                            
+
                             const levelColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 2]
+
 
                             d3.selectAll(sids.join(','))
                                 .transition()
-                                .delay(level * 200)
-                                .duration(300)
+                                .delay(level * 300)
+                                .duration(500)
                                 .style('fill', levelColor)
                                 .style('opacity', 1)
-                                .classed('focus', true)
-                            
+                                .selection().classed('focus', true)
+    
+
                             d3.selectAll(focusLinkIds.join(','))
-                                .transition()
-                                .delay(level * 200)
-                                .duration(300)
-                                .style('stroke', levelColor)
+                                .attr('stroke-dasharray', "100% 100%")
+                                .attr('stroke-dashoffset', '100%')
                                 .style('opacity', 1)
+                                .style('stroke', levelColor)
+                                .transition()
+                                .duration(2000)
+                                .delay(level * 300)
+                                .ease(d3.easeLinear)
+                                .attr('stroke-dashoffset', "0%")
                         }
                 }
 
@@ -243,12 +258,13 @@
                                 .style("top", (d3.event.pageY ) + "px")
                             
                             networkGroup.selectAll('circle')
+                                .style('fill', 'black')
                                 .style('opacity', 0.1)  
                             
                             networkGroup.selectAll('.edge')
+                                .style('stroke', 'black')
                                 .style('stroke', '#efefef')
                                 
-
                             d3.select(this)
                                 .transition()
                                 .duration(100)
@@ -265,6 +281,17 @@
                 function ticked() {
                     renderLinks()
                     renderNodes()
+                }
+
+                function line(d) {
+                    return `M${d.target.x},${d.target.y} L${d.source.x},${d.source.y}`
+                }
+
+                function linkArc(d) {
+                    var dx = d.target.x - d.source.x,
+                        dy = d.target.y - d.source.y,
+                        dr = Math.sqrt(dx * dx + dy * dy);
+                    return "M" + d.target.x + "," + d.target.y + "A" + dr + "," + dr + " 0 0,1 " + d.source.x + "," + d.source.y;
                 }
             }
             main()
