@@ -11,7 +11,7 @@
                 text-align: center;			
                 padding: 10px;				
                 font: 12px sans-serif;		
-                background: white;
+                background: rgba(255,255,255,0.8);
                 border: 1px solid black;		
                 border-radius: 3px;			
                 pointer-events: none;			
@@ -26,12 +26,13 @@
             }
 
             .paper {
-                fill: rgba(0,0,0,1);
+                fill: black;
             }
 
             .edge {
                 fill: none;
-                stroke: #222;
+                stroke: black;
+                opacity: 0.4;
                 stroke-width: 1.5px;
             }
 
@@ -61,6 +62,10 @@
                 margin: 10px;
                 border: 1px solid black;
                 border-radius: 3px;
+            }
+
+            #input-box a {
+                display: inline;
             }
 
             * {
@@ -221,7 +226,7 @@
                             .classed('info', true)
                     newBoxes.append('div').attr('class','title')
                     newBoxes.append('div').attr('class','authors')
-                    newBoxes.append('div').attr('class','citations')
+                    newBoxes.append('span').attr('class','citations')
                     newBoxes.append('a')
 
                     infobox = newBoxes.merge(infobox)
@@ -230,8 +235,8 @@
                         .style('opacity', 0)
 
                     infobox.select('.title').html((d) => `${d.title} (${d.year})`)
-                    infobox.select('.authors').html((d) => d.authors)
-                    infobox.select('.citations').html((d) => `${d.n_citation} citations` )
+                    infobox.select('.authors').html((d) => d.authors.join(', '))
+                    infobox.select('.citations').html((d) => `${d.n_citation} citations  ` )
                     infobox.select('a').attr('href', (d) => 
                         `https://dblp.uni-trier.de/search?q=${encodeURIComponent(d.title + ' ' + d.authors[0])}`
                         )
@@ -257,15 +262,10 @@
 
                 }
 
-                function renderLinks() {
-                    var u = networkGroup
-                        .selectAll('path')
-                        // .selectAll('line')
-                        .data(filteredLinks)
-
-                    u.enter()
+                function renderLinksOnSelection(selection, data) {
+                    var u = selection.data(data)
+                    u = u.enter()
                         .append('path')
-                        // .append('line')
                         .attr('class', 'edge')
                         .attr('id', (d) => `l${d.index}`)
                         .merge(u)
@@ -281,41 +281,54 @@
                         })
                         .attr('y2', function(d) {
                             return d.target.y
-                        })
+                        }).merge(u)
 
                     u.exit().remove()
+                    return u
+                }
+                
+                function renderLinks() {
+                    var u = networkGroup
+                        .selectAll('path')
+                    renderLinksOnSelection(u, filteredLinks)
                 }
                 
                 function renderCiter(nodeIndex, level = 0) {
                     if (level == 0) {
                         papers = []
+                        svg.selectAll('#focus').remove()
                     }
-                    const focusLinkIds = []
 
                     renderInfo(nodeData[nodeIndex])
 
-                    const sids = linkData.filter((link) => link.target.level_0 == nodeIndex)
+                    const focusLinks = linkData.filter((link) => link.target.level_0 == nodeIndex)
                         .map((link) => {
                             if (level < ancestryThres) {
                                 renderCiter(link.source.level_0, level + 1)
                             }
-                            focusLinkIds.push(`#l${link.index}`)
-                            return `#c${link.source.id}`
+                            return link
                         })
+                    
+                    const sids = focusLinks.map(l => `#c${l.source.id}`)
 
-                        if (sids.length > 0) {
+                        if (focusLinks.length > 0) {
 
                             const levelColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 2]
+                            
+                            var focus = svg.append('g')
+                                .attr('id', 'focus')
 
-                            d3.selectAll(sids.join(','))
-                                .transition()
-                                .delay(level * 300)
-                                .duration(500)
-                                .style('fill', levelColor)
-                                .style('opacity', 1)
-                                .selection().classed('focus', true)
-
-                            const edges = d3.selectAll(focusLinkIds.join(','))
+                            var edges = focus.selectAll('path')
+                                .data(focusLinks)
+                                .enter()
+                                .append('path')
+                                    .attr('class', 'edge')
+                                    .attr('id', (d) => `l${d.index}-focus`)
+                                    .attr('d', (d) => linkArc(d))
+                                    .attr('x1', d => d.source.x)
+                                    .attr('y1', d => d.source.y)
+                                    .attr('x2', d => d.target.x)
+                                    .attr('y2', d => d.target.y)
                                 .attr('stroke-dasharray', "100% 100%")
                                 .attr('stroke-dashoffset', '100%')
                                 .style('opacity', 1)
@@ -326,29 +339,29 @@
                                 .delay(level * 300)
                                 .ease(d3.easeLinear)
                                 .attr('stroke-dashoffset', "0%")
+
+                            focus.selectAll('circle')
+                                .data(focusLinks.map(l => l.source))
+                                .enter()
+                                .append('circle')
+                                    .attr('class', 'paper')
+                                    .style('fill', levelColor)
+                                    .style('opacity', 0.0)
+                                    .attr('id', (d) => `c${d.id}`)
+                                    .attr('r', (d) => influenceScale(d.n_citation))
+                                    .attr('cx', d => d.x)
+                                    .attr('cy', d => d.y)
+                                    .on('click', paperNodeClickHandler)
+                                .transition()
+                                .delay(level * 300)
+                                .duration(500)
+                                    .style('opacity', 1)
+                                    .selection().classed('focus', true)
                         }
                 }
 
-                function renderNodes() {
-                    const u = networkGroup
-                        .selectAll('circle')
-                        .data(nodeData)
-                    
-                    const r = 5
-                    u.enter()
-                        .append('circle')
-                        .attr('class', 'paper')
-                        .attr('id', (d) => `c${d.id}`)
-                        .attr('r', (d) => influenceScale(d.n_citation))
-                        .merge(u)
-                        .attr('cx', function(d) {
-                            return d.x
-                        })
-                        .attr('cy', function(d) {
-                            return d.y
-                        })
-                        .on('click', function(d) {
-                            tooltip.transition()		
+                function paperNodeClickHandler(d) {
+                    tooltip.transition()		
                                 .duration(200)
                                 .style('display', 'block')
                                 .style("opacity", .9)
@@ -373,9 +386,26 @@
                                     .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
                                     .style('opacity', 1)
                             resetInfo()
-                            renderCiter(d.index)
 
-                        })
+
+                            renderCiter(d.index)
+                }
+
+                function renderNodes() {
+                    const u = networkGroup
+                        .selectAll('circle')
+                        .data(nodeData)
+                    
+                    const r = 5
+                    u.enter()
+                        .append('circle')
+                        .attr('class', 'paper')
+                        .attr('id', (d) => `c${d.id}`)
+                        .attr('r', (d) => influenceScale(d.n_citation))
+                        .merge(u)
+                        .attr('cx', d => d.x)
+                        .attr('cy', d => d.y)
+                        .on('click', paperNodeClickHandler)
 
                     u.exit().remove()
                 }
