@@ -27,6 +27,7 @@
 
             .paper {
                 fill: black;
+                cursor: pointer; 
             }
 
             .edge {
@@ -104,6 +105,13 @@
                     hideTooltip()
                 })
 
+            // Define the div for the tooltip
+            var tooltip = d3.select("body").append("div")	
+                .attr("class", "tooltip")				
+                .style("opacity", 0)
+                .style('width', 200)
+                .style('height', 'auto')
+
             const svg = d3.select('body').append('svg')
                 .attr('height', height)
                 .attr('width', width)
@@ -121,12 +129,7 @@
 
             const networkGroup = svg.append('g')
 
-            // Define the div for the tooltip
-            var tooltip = d3.select("body").append("div")	
-                .attr("class", "tooltip")				
-                .style("opacity", 0)
-                .style('width', 200)
-                .style('height', 'auto')
+
 
             // Define div for infomation side bar
             var sidebar = d3.select('body').append('div')
@@ -145,6 +148,7 @@
                 networkGroup.selectAll('#focus').remove()
 
                 svg.selectAll('circle')
+                    .on('mouseover', null)
                     .transition().duration(200)
                     .style('opacity', null)
                     .style('fill', null)
@@ -157,17 +161,26 @@
             }
 
             function resetInfo() {
+                papers.forEach((p) => {
+                    p.__level = null
+                })
                 papers = []
+
                 renderInfo()
             }
 
-            function renderInfo(paper) {
-                if (paper) {
-                    if (papers.length > 20) return
-                    if (!papers.find(p => p.id == paper.id)) {
-                        papers.push(paper)
-                    }
+            function addPaper(paper, level) {
+                if (papers.length > 20) return
+                if (!papers.find(p => p.id == paper.id)) {
+                    paper.__level = level
+                    papers.push(paper)
                 }
+            }
+
+            function renderInfo() {
+
+                papers = papers.sort((a,b) => a.__level - b.__level)
+
                 const infoHeight = 200
                 const infoMargin = 20
                 var infobox = sidebar.selectAll('div.info')
@@ -184,7 +197,7 @@
                 newBoxes.append('a')
 
                 infobox = newBoxes.merge(infobox)
-
+                infobox.style('background-color', (d) => colorForLevel(d.__level))
                 infobox.style('display', 'none')
                     .style('opacity', 0)
 
@@ -205,7 +218,9 @@
                     .style('opacity', 1)
             }
 
-        
+            function colorForLevel(i) {
+                return d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1 - i]
+            }
             async function main() {
                 const data = await d3.json('paper_graph.json')
                 const linkData = data.links
@@ -222,6 +237,7 @@
 
                 inputBox.append('label')
                     .html('Filter edge by paper citation count<br/>')
+                    .style('display', 'none')
                 inputBox.append('input')
                         .attr('type', 'range')
                         .attr('min', minCite)
@@ -232,10 +248,11 @@
                         })
                         .style('padding', 10)
                         .property('value', citationThres)
+                        .style('display', 'none')
 
 
                 inputBox.append('p')
-                        .html('Click on circle to see paper information. <br/> Click on background to reset.')
+                        .html('<span style="text-decoration:underline;">Instructions</span><br/>Click on circle to see paper information. <br/> Click on background to reset.</br>Hover over colored circles to see more info.')
 
 
                 const influenceScale = d3.scaleLog()
@@ -297,7 +314,7 @@
                         svg.selectAll('#focus').remove()
                     }
 
-                    renderInfo(nodeData[nodeIndex])
+                    addPaper(nodeData[nodeIndex], level)
 
                     const focusLinks = linkData.filter((link) => link.target.index == nodeIndex)
                         .map((link) => {
@@ -307,11 +324,13 @@
                             return link
                         })
                     
+                        
+                    
                     const sids = focusLinks.map(l => `#c${l.source.id}`)
 
                         if (focusLinks.length > 0) {
-                            const edgeColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 1] 
-                            const levelColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 2]
+                            const edgeColor = colorForLevel(level) 
+                            const levelColor = colorForLevel(level + 1) 
                             
                             var focus = networkGroup.append('g')
                                 .attr('id', 'focus')
@@ -337,7 +356,7 @@
                                 .delay(level * 300)
                                 .ease(d3.easeLinear)
                                 .attr('stroke-dashoffset', "0%")
-
+                            
                             var circles = focus
                                 .append('g')
                                     .attr('id', 'level-' + level)
@@ -353,30 +372,47 @@
                                     .attr('cx', d => d.x)
                                     .attr('cy', d => d.y)
                                     .on('click', paperNodeClickHandler)
+                                .on('mouseover', (d) => showPaperTooltip(d))
+
                             circles.transition()
                                 .delay(level * 300)
                                 .duration(500)
                                     .style('opacity', 1)
-
                         }
+
+                    if (level == 0) {
+                        renderInfo()
+                    }
                 }
 
-                function paperNodeClickHandler(d) {
-                    sim.stop()
+                function showPaperTooltip(d) {
                     tooltip.transition()		
                         .duration(200)
                         .style('display', 'block')
                         .style("opacity", .9)
                     tooltip.select('#title').html(`${d.title} (${d.year})`)
-                    tooltip.select('#authors').html(d.authors)
+                    tooltip.select('#authors').html(d.authors.join(', '))
                     tooltip.select('#cited-times').html(`${d.n_citation} citations` )
                     tooltip
                         .style("left", (d3.event.pageX + 15 ) + "px")		
                         .style("top", (d3.event.pageY ) + "px")
+
+                    // tooltip.select('a').attr('href', () => 
+                    //         `https://dblp.uni-trier.de/search?q=${encodeURIComponent(d.title + ' ' + d.authors[0])}`
+                    //     )
+                    //     .attr('target', '_blank')
+                    //     .html('link')
+                    //     .attr('id', () => d.id)
+                }
+
+                function paperNodeClickHandler(d) {
+                    sim.stop()
+                    showPaperTooltip(d)
                     
                     networkGroup.selectAll('circle')
                         .style('opacity', 0.1)
                         .style('fill', null)
+                        .on('mouseover', null)
                     
                     networkGroup.selectAll('.edge')
                         .style('stroke', 'black')
@@ -385,10 +421,11 @@
                     resetInfo()
                     renderCiter(d.index)
 
-                    d3.select(this)
+                    d3.select(`#c${d.id}`)
+                        .on('mouseover', (d) => showPaperTooltip(d))
                         .transition()
                         .duration(100)
-                            .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
+                            .style('fill', colorForLevel(0)) 
                             .style('opacity', null)
                 }
 
