@@ -77,13 +77,6 @@
     </head>
     <body>
         <script>
-            d3.selection.prototype.moveToFront = function() {
-                return this.each(function(){
-                    this.parentNode.appendChild(this);
-                });
-            };
-
-
             const margin = {
                 left: 0,
                 top: 0,
@@ -149,7 +142,7 @@
 
             function resetFocus() {
                 resetInfo()
-                svg.selectAll('#focus').remove()
+                networkGroup.selectAll('#focus').remove()
 
                 svg.selectAll('circle')
                     .transition().duration(200)
@@ -214,8 +207,10 @@
 
         
             async function main() {
-                const linkData = await d3.json('link.json')
-                const nodeData = await d3.json('top_paper.json')
+                const data = await d3.json('paper_graph.json')
+                const linkData = data.links
+                const nodeData = data.nodes
+
                 filteredLinks = linkData
                 
                 const citations = nodeData.map(d => d.n_citation)
@@ -236,6 +231,7 @@
                             filterLinks()
                         })
                         .style('padding', 10)
+                        .property('value', citationThres)
 
 
                 inputBox.append('p')
@@ -254,7 +250,6 @@
                     .alphaDecay(0.1)
                     .on('tick', ticked);
 
-
                 function filterLinks() {
                     const filteredLinkIds = linkData.filter(d =>
                         citations[d.target.index] > citationThres
@@ -263,7 +258,6 @@
                     svg.selectAll('.edge').style('display', 'none')
                     svg.selectAll(filteredLinkIds.join(','))
                         .style('display', 'block')
-
                 }
 
                 function renderLinksOnSelection(selection, data) {
@@ -305,10 +299,10 @@
 
                     renderInfo(nodeData[nodeIndex])
 
-                    const focusLinks = linkData.filter((link) => link.target.level_0 == nodeIndex)
+                    const focusLinks = linkData.filter((link) => link.target.index == nodeIndex)
                         .map((link) => {
                             if (level < ancestryThres) {
-                                renderCiter(link.source.level_0, level + 1)
+                                renderCiter(link.source.index, level + 1)
                             }
                             return link
                         })
@@ -316,10 +310,10 @@
                     const sids = focusLinks.map(l => `#c${l.source.id}`)
 
                         if (focusLinks.length > 0) {
-
+                            const edgeColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 1] 
                             const levelColor = d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - level - 2]
                             
-                            var focus = svg.append('g')
+                            var focus = networkGroup.append('g')
                                 .attr('id', 'focus')
 
                             var edges = focus.selectAll('path')
@@ -336,7 +330,7 @@
                                 .attr('stroke-dasharray', "100% 100%")
                                 .attr('stroke-dashoffset', '100%')
                                 .style('opacity', 1)
-                                .style('stroke', levelColor)
+                                .style('stroke', edgeColor)
 
                             edges.transition()
                                 .duration(2000)
@@ -344,7 +338,10 @@
                                 .ease(d3.easeLinear)
                                 .attr('stroke-dashoffset', "0%")
 
-                            focus.selectAll('circle')
+                            var circles = focus
+                                .append('g')
+                                    .attr('id', 'level-' + level)
+                                .selectAll('circle')
                                 .data(focusLinks.map(l => l.source))
                                 .enter()
                                 .append('circle')
@@ -356,41 +353,43 @@
                                     .attr('cx', d => d.x)
                                     .attr('cy', d => d.y)
                                     .on('click', paperNodeClickHandler)
-                                .transition()
+                            circles.transition()
                                 .delay(level * 300)
                                 .duration(500)
                                     .style('opacity', 1)
-                                    .selection().classed('focus', true)
+
                         }
                 }
 
                 function paperNodeClickHandler(d) {
+                    sim.stop()
                     tooltip.transition()		
-                                .duration(200)
-                                .style('display', 'block')
-                                .style("opacity", .9)
-                            tooltip.select('#title').html(`${d.title} (${d.year})`)
-                            tooltip.select('#authors').html(d.authors)
-                            tooltip.select('#cited-times').html(`${d.n_citation} citations` )
-                            tooltip
-                                .style("left", (d3.event.pageX + 15 ) + "px")		
-                                .style("top", (d3.event.pageY ) + "px")
-                            
-                            networkGroup.selectAll('circle')
-                                .style('opacity', 0.1)  
-                            
-                            networkGroup.selectAll('.edge')
-                                .style('stroke', 'black')
-                                .style('stroke', '#efefef')
-                                
-                            d3.select(this)
-                                .transition()
-                                .duration(100)
-                                    .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
-                                    .style('opacity', null)
-                            resetInfo()
+                        .duration(200)
+                        .style('display', 'block')
+                        .style("opacity", .9)
+                    tooltip.select('#title').html(`${d.title} (${d.year})`)
+                    tooltip.select('#authors').html(d.authors)
+                    tooltip.select('#cited-times').html(`${d.n_citation} citations` )
+                    tooltip
+                        .style("left", (d3.event.pageX + 15 ) + "px")		
+                        .style("top", (d3.event.pageY ) + "px")
+                    
+                    networkGroup.selectAll('circle')
+                        .style('opacity', 0.1)
+                        .style('fill', null)
+                    
+                    networkGroup.selectAll('.edge')
+                        .style('stroke', 'black')
+                        .style('stroke', '#efefef')
+                        
+                    resetInfo()
+                    renderCiter(d.index)
 
-                            renderCiter(d.index)
+                    d3.select(this)
+                        .transition()
+                        .duration(100)
+                            .style('fill', d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1]) 
+                            .style('opacity', null)
                 }
 
                 function renderNodes() {
