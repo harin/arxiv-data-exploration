@@ -24,6 +24,7 @@ library(vcdExtra)
 library(feather)
 library(gridExtra)
 library(reshape2)
+library(ggpubr)
 ```
 
 
@@ -51,12 +52,17 @@ head(papers_authors)
 
 ```{r}
 papers_reference_citation <- subset(papers_reference[!duplicated(papers_reference[c("id")]),], select = -c(references) )
-papers_reference_citation
+head(papers_reference_citation)
 ```
+
+# Number of papers
+
 ```{r}
 ggplot(data=papers_reference_citation, aes(x=year)) +
     geom_bar(stat="count")
 ```
+
+## Citation
 
 ```{r}
 ggplot(data=papers_reference_citation, aes(x = n_citation)) + 
@@ -82,26 +88,24 @@ ggplot(melt(citation_summary, id.vars='year'),
   geom_bar(stat='identity', position='dodge')
 ```
 
-```{r}
-topic_freq <- dplyr::summarise(group_by(papers_reference_citation, year, topic),frequency =n())
+## Citation vs. Authors
 
-ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
-  geom_line() +
-  ggtitle("Number of Papers in each Topic Over Time")
+```{r}
+top_20_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),total_citation =sum(n_citation)), desc(total_citation)), n=20)
+
+ggplot(top_20_authors, aes(x = total_citation, y = reorder(authors, total_citation))) +
+  geom_point() + 
+  ylab("authors") +
+  xlim(0, 18500)
 ```
 
 ```{r}
 top_10_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),total_citation =sum(n_citation)), desc(total_citation)), n=10)
 
-top_10_authors
-```
-
-```{r}
 papers_top_authors <- papers_authors %>% 
   filter(authors %in% top_10_authors$authors)
 
 authors_citation <- dplyr::summarise(group_by(papers_top_authors, authors, year),yearly_citation =sum(n_citation))
-authors_citation
 
 cumsum_authors_citation <- authors_citation %>% group_by(authors) %>% mutate(cum_citations = cumsum(yearly_citation))
 
@@ -111,3 +115,39 @@ ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) +
   ggtitle("Number of Citations of top Authors Over Time")
 ```
 
+## Citation vs. Topic
+
+```{r}
+topic_freq <- dplyr::summarise(group_by(papers_reference_citation, year, topic),frequency =n())
+
+ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
+  geom_line() +
+  ggtitle("Number of Papers in each Topic Over Time")
+```
+
+
+```{r}
+ggplot(papers_reference_citation, aes(n_citation, fill = topic, colour = topic)) +
+  geom_density(alpha = 0.1) +
+  xlim(0, 100)
+```
+
+## Citation vs. Venue
+
+```{r}
+ggplot(papers_reference_citation, aes(x = venue, y = n_citation)) + 
+  geom_boxplot() +
+  coord_flip() +
+  ylim(0, 100)
+```
+
+
+## Citation vs. Title Length
+
+```{r}
+papers_reference_citation$title_length <- sapply(papers_reference_citation$title, function(x) length(unlist(strsplit(as.character(x), "\\W+"))))
+
+ggplot(papers_reference_citation, aes(title_length, n_citation)) + 
+  geom_point() +
+  stat_cor(method = "pearson", papers_reference_citation.title_length = 3, papers_reference_citation.n_citation = 30)
+```
