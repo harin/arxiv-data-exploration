@@ -29,6 +29,11 @@ library(extracat)
 ```
 
 ```{r}
+c_path <- "citation_only.feather"
+citation_only <- read_feather(c_path)
+```
+
+```{r}
 path <- "ml_papers.feather"
 papers <- read_feather(path)
 summary(papers)
@@ -230,20 +235,24 @@ After exploring the total number of citation. We found that some authors have be
 ## Citation vs. Topic
 
 ```{r}
-topic_citation <- dplyr::summarise(group_by(papers, year, topic),frequency =n())
+topic_freq <- dplyr::summarise(group_by(papers, year, topic), frequency = n())
 
-ggplot(topic_citation, aes(year, frequency,colour=topic)) + 
+ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
   geom_line() +
-  ggtitle("Number of Papers in each Topic Over Time")
+  ggtitle("Number of Papers from Each Topic over Time")
 ```
+
 
 ```{r}
-topic_freq <- dplyr::summarise(group_by(papers, year, topic), mean_citaition = mean(n_citation))
-
-ggplot(topic_freq, aes(year, mean_citaition,colour=topic)) + 
+topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), mean_citaition = mean(n_citation))
+topic_percent_cite <-  group_by(topic_percent_cite, year) %>% 
+  mutate(percent = mean_citaition*100/sum(mean_citaition))
+ggplot(topic_percent_cite, aes(year, percent,colour=topic)) + 
   geom_line() +
-  ggtitle("Average Number of Citations of Papers in each Topic Over Time")
+  ggtitle("Percentage of Topic by Number of CItations Over Time")
 ```
+
+From the line plot, we can  see that the popularity of papers (measured by number of citations p) is changing overtime. Robotics and Autonation was the field that got
 
 ```{r}
 ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
@@ -257,8 +266,14 @@ However, as we dicussed earlier, there is a problem on data with number of citat
 ## Citation vs. Venue
 
 ```{r}
-ggplot(papers, aes(x = reorder(venue, n_citation, FUN = median), y = n_citation)) + 
-  geom_boxplot() +
+venue_citation <-  papers%>%
+  select(venue, n_citation)
+
+citation_only$venue <- "All venues"
+
+citation_only <- rbind(venue_citation, citation_only)
+ggplot() + 
+  geom_boxplot(data = citation_only, aes(x = reorder(venue, n_citation, FUN = median), y = n_citation)) +
   coord_flip() +
   ylim(0, 100)
 ```
@@ -271,18 +286,16 @@ Note that the problem of n_citation = 50 is also captured by the boxplot of some
 As we tried to make use of title column in our analysis. We found a research, "Papers with shorter titles get more citations"
 <https://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>, which suggest an interesting relationship between length of title with citations. We decide to use scatter plot to see the relationship between the variables.
 
-```{r}
-ggplot(papers, aes(title_length, n_citation)) + 
-  geom_point() +
-  stat_cor(method = "pearson", papers.title_length = 3, papers.n_citation = 30)
-```
 
 ```{r}
-title_length_citation <- dplyr::summarise(group_by(papers, title_length),mean_citation =mean(n_citation))
-
-ggplot(title_length_citation, aes(x = title_length, y = mean_citation)) +
-  geom_bar(stat = "identity")
+title_length_citation <- dplyr::summarise(group_by(papers, title_length),
+                                          mean_citation =mean(n_citation))
+title_length_citation$lower <- qpois(0.05, title_length_citation$mean_citation)
+title_length_citation$upper <- qpois(0.95, title_length_citation$mean_citation)
+ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
+   geom_point() +
+   geom_errorbar(aes(ymin = lower, ymax = upper), width=.2)
 ```
 
 
-Although there is no obvious linear relation ship between title length and number of citations, the scatter plot reveals an interesting patterns that there are no papers with title length more than 20 words having more than 500 citations like the ones with shorter name. The bar chart between title length and mean citations also confirms the trend that the mean has a decreasing trend as the title length increases.
+Although there is no obvious linear relation ship between title length and number of citations, the scatter plot reveals an interesting patterns that there are no papers with title length more than 20 words having more than 500 citations like the ones with shorter name. The dot plot with 95% confidence interval between title length and mean citations also confirms the trend that the mean has a decreasing trend as the title length increases.
