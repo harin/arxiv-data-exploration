@@ -73,7 +73,10 @@ papers_authors <- papers %>%
 
 ggplot(count(papers_authors, authors), aes(x = n)) +
   geom_bar() +
-  coord_cartesian(xlim = c(0,50))
+  coord_cartesian(xlim = c(0,50)) +
+  ylab("Frequency") +
+  xlab("Number of Authors") +
+  ggtitle("Histogram of Number of Authors per paper")
 ```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -91,7 +94,11 @@ It is useful to know the distribution of papers among the venues.
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(fct_rev(fct_infreq(venue)))) +
   geom_bar(stat="count") +
-  coord_flip()
+  coord_flip() +
+  ylab("Number of Papers") +
+  xlab("Venues") +
+  ggtitle("Venues and Number of Papers") +
+  theme(axis.text.y=element_text(size=rel(0.7)))
 ```
 
 It appears that some of the venues have a significantly higher number of papers than the other especially Lecture Notes in Computer Science, International Conference on Acoustics, Speech, and Signal Processing, and International Conference on Robotics and Automation. When we analyze data using **venue** column, we need to be cautious and use statistics such as mean, median, or distribution to decrease the impact of different volumes between venues.
@@ -104,7 +111,10 @@ It appears that some of the venues have a significantly higher number of papers 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(n_citation)) +
   geom_bar(stat="count") +
-  coord_cartesian(xlim = c(0,100))
+  coord_cartesian(xlim = c(0,100)) +
+  ylab("Frequency") +
+  xlab("Citations") +
+  ggtitle("Histogram of Citations per paper")
 ```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -141,7 +151,8 @@ The number of papers increases drastically from 1960s to 2000s. However, it drop
 **title** is a discrete numerical column containing the year of publication of each paper
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
-papers$title_length <- sapply(papers$title, function(x) length(unlist(strsplit(as.character(x), "\\W+"))))
+papers$title_length <- sapply(papers$title, 
+                              function(x) length(unlist(strsplit(as.character(x), "\\W+"))))
 
 ggplot(data=papers, aes(title_length)) +
   geom_bar(stat="count")+
@@ -224,14 +235,19 @@ The bars for median can capture the abnormality of the number of citations equal
 ## 4.2 Citation and Authors
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
-top_10_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),total_citation =sum(n_citation)), desc(total_citation)), n=10)
+top_10_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),
+                                                total_citation =sum(n_citation)),
+                               desc(total_citation)), n=10)
 
 papers_top_authors <- papers_authors %>% 
   filter(authors %in% top_10_authors$authors)
 
-authors_citation <- dplyr::summarise(group_by(papers_top_authors, authors, year),yearly_citation =sum(n_citation))
+authors_citation <- dplyr::summarise(group_by(papers_top_authors, authors, year),
+                                     yearly_citation =sum(n_citation))
 
-cumsum_authors_citation <- authors_citation %>% group_by(authors) %>% mutate(cum_citations = cumsum(yearly_citation))
+cumsum_authors_citation <- authors_citation %>% 
+  group_by(authors) %>% 
+  mutate(cum_citations = cumsum(yearly_citation))
 
 ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) + 
   geom_line() +
@@ -246,7 +262,9 @@ We are interested in how each authors, especially the top-cited authors all time
 
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
-top_30_authors_mean <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),mean_citation =mean(n_citation)), desc(mean_citation)), n=30)
+top_30_authors_mean <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),
+                                                     mean_citation =mean(n_citation)), 
+                                    desc(mean_citation)), n=30)
 
 ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_citation))) +
   geom_point() + 
@@ -257,6 +275,7 @@ ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_cit
 
 After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a 10,000 times on average. This can be caused by two reasons. The first one is that they are relatively new researchers who has published only a few works. For the second reasons, we need to refer back to the previous plot in the case of Stephane Mallat who appears the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
 
+\pagebreak
 
 ## 4.3 Citation and Topic
 
@@ -268,19 +287,30 @@ ggplot(topic_freq, aes(year, frequency,colour=topic)) +
   ggtitle("Number of Papers from Each Topic over Time") +
   xlim(1954, 2016)
 ```
+
+The number of papers in each topic has a similar general trend over the papers overall as discussed earlier that it reached its peak in 2006 , then falls drastically and remians about the same level until present. However, it is difficult to discuss the ranking and trend of topics from this frequency plot. Therefore, we create the percentage version of this graph and discuss it in the next plot.
+
+
 ```{r}
 total_by_year <- papers %>% filter(year < 2017) %>% group_by(year) %>% count()
-topic_pct <- papers %>% filter(year < 2017) %>% group_by(year, topic) %>% count() %>% mutate(pct = n /total_by_year[total_by_year$year == year,]$n)
+topic_pct <- papers %>% 
+  filter(year < 2017) %>% 
+  group_by(year, topic) %>% 
+  count() %>% 
+  mutate(pct = n*100 /total_by_year[total_by_year$year == year,]$n)
 
 ggplot(topic_pct, aes(year, pct, colour=topic)) + 
   geom_line() +
-  ggtitle("Percentage of Paper by Topic over time") +
+  ggtitle("Percentage of Papers by Topic over time") +
   ylab('Percentage of All Papers By Year') +
   theme_grey(14)
 ```
 
+By comparing by percentage, we can see the trend clearer that from 1960 to 1980, the papers on Signal and Speech Processing dominates imterms of the number of papers among all Computer Science publications. We can also see the Pattern Recognition and Machine Learning field gaining its volume share during the period. In the recent years, we can also see the trend in popularity of Machine Learning and Conputer Vision field. However, Signal and Speech Processing which once had a lot of interest in the past is having the least contribution volume.
+
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
-topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), sum_citaition = sum(n_citation))
+topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), 
+                                       sum_citaition = sum(n_citation))
 topic_percent_cite <-  group_by(topic_percent_cite, year) %>% 
   mutate(percent = sum_citaition*100/sum(sum_citaition))
 ggplot(topic_percent_cite, aes(year, percent,colour=topic)) + 
@@ -288,7 +318,7 @@ ggplot(topic_percent_cite, aes(year, percent,colour=topic)) +
   ggtitle("Percentage of Topic by Number of CItations Over Time") 
 ```
 
-From the line plot, we can see that the popularity of papers (measured by the number of citations p) is changing over time. Robotics and Automation was the field that got
+From the line plot, we can see that the popularity of papers (measured by the number of citations) has a similar pattern with the percentage of papers by topic, but with higher variance. This suggests an interesting relationship between number of papers and citations that when papers are published more in a field, the citations percentage usually grow accordingly.
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
@@ -299,7 +329,9 @@ ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
   ggtitle("Density Plot of Citations among Topics")
 ```
 
-However, as we discussed earlier, there is a problem on data with the number of citation = 50
+The density plot of citations of each topic has very similar shape. Although it is very subtle, we can see that Computer Vision has the highest density at the higher number of citaions.
+
+However, we believe that the density plot will give us more information about the distribution of citaions in each topic if it is not disturbed by the unusal peak at 50. 
 
 
 ## 4.4 Citation and Venue
@@ -312,11 +344,14 @@ citation_only$venue <- "All venues"
 
 citation_only <- rbind(venue_citation, citation_only)
 ggplot() + 
-  geom_boxplot(data = citation_only, aes(x = reorder(venue, n_citation, FUN = median), y = n_citation)) +
+  geom_boxplot(data = citation_only, 
+               aes(x = reorder(venue, n_citation, FUN = median), 
+                   y = n_citation)) +
   coord_flip(ylim = c(0, 250))+
   ylab("Venunes") +
   xlab("Citations") +
-  ggtitle("Boxplot of Venues and Citations")
+  ggtitle("Boxplot of Venues and Citations") +
+  theme(axis.text.y=element_text(size=rel(0.7)))
   
 ```
 
@@ -327,7 +362,7 @@ Note that the problem of n_citation = 50 is also captured by the boxplot of some
 ## 4.5 Citation and Title
 
 As we tried to make use of the title column in our analysis. We found a research, "Papers with shorter titles get more citations"
-<https://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>, which suggests an interesting relationship between title length and citations. We decide to use a scatter plot to see the relationship between the variables.
+[<https://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>], which suggests an interesting relationship between title length and citations. We decide to use a scatter plot to see the relationship between the variables.
 
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
