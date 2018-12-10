@@ -6,13 +6,10 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
-## Exploratory Analysis
-
-
-```{r cars, echo = FALSE}
+```{r, echo = FALSE, message=FALSE, warning=FALSE}
 library(ggplot2)
 library(tidyverse)
 library(extracat)
@@ -28,50 +25,48 @@ library(ggpubr)
 library(extracat)
 ```
 
-```{r}
+```{r, warning=FALSE}
 c_path <- "citation_only.feather"
 citation_only <- read_feather(c_path)
 ```
 
-```{r}
-path <- "ml_papers.feather"
+```{r, warning=FALSE}
+path <- "ml_papers_2.feather"
 papers <- read_feather(path)
-summary(papers)
-head(papers)
 ```
 
-# Analysis of Data Quality
+# 3. Analysis of Data Quality
 
-## Python preprocessing
+## 3.1 Python preprocessing
 
-The raw data downloaded from the source is in line-separated json format. We first read the data, convert it into data frame format, and perform data cleaning using python. From 7 columns, there are two columns that contain numeric values, **n_citation** and **year**. **authors** and **references** contain lists of string values which we convert to string in comma-separted format. The remaining three columns, **id**, **title** and **venue**, has string type values.
+The raw data downloaded from the source is in line-separated JSON format. We first read the data, convert it into a data frame format, and perform data cleaning using python. From 7 columns, there are two columns that contain numeric values, **n_citation** and **year**. **authors** and **references** contain lists of string values which we convert to string in comma-separated format. The remaining three columns, **id**, **title** and **venue**, has string type values.
 
 As mentioned earlier, we then subset data by selecting the papers from 10 venues with the highest volume for further analysis.
 
-From the subsetted data, we decide to generate the 8th column named **topic** using Latent Dirichlet Allocation (LDA) <http://www.jmlr.org/papers/volume3/blei03a/blei03a.pdf> with titles of papers to cluster them into 8 topics. The reason is that we actually found a dataset with labelled fields of study, but it does not contain the information about citation that we need. By systematically generating the topics from our data, we are not only be able to find more interesting pattern in our data, but also create a sample guideline on visualizing similar research paper datasets.
+From the subsetted data, we decide to generate the 8th column named **topic** using Latent Dirichlet Allocation (LDA) [<http://www.jmlr.org/papers/volume3/blei03a/blei03a.pdf>] with titles of papers to cluster them into 8 topics. The reason is that we actually found a dataset with labeled fields of study, but it does not contain the information about citations that we need. By systematically generating the topics from our data, we are not only able to find a more interesting pattern in our data, but also create a sample guideline on visualizing similar research paper datasets.
 
-The output file is in feather <https://github.com/wesm/feather> format which can be processed interchangably between R and python.
+The output file is in feather [<https://github.com/wesm/feather>] format which can be processed interchangeably between R and python.
 
-## Missing values
+## 3.2 Missing values
 
-The original data contains some missing values in 'reference' column for approximately 17.28% which is the only missing value pattern found in dataset. We assume that the NaN value results from the fact that the paper has no reference and handle it by replacing with empty string.
+The original data contains some missing values in 'reference' column for approximately 17.28% which is the only missing value pattern found in the dataset. We assume that the NaN value results from the fact that the paper has no reference and handle it by replacing with an empty string.
 
-## Id column
+## 3.3 *id* column
 
 **id** is a string column containing unique identity for each research paper.
 We have to be certain that each id is unique.
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 sum(duplicated(papers$id))
 ```
 
-The **id** column is not dupliccated. We can safely use it to count and join data in further analysis.1
+The **id** column is not duplicated. We can safely use it to count and join data in further analysis.1
 
-## Authors column
+## 3.4 *authors* column
 
-The **authors** column contains string with comma-separated format.  For example, *Gareth Beale, Graeme Earl*. We need to convert it into mulitiple lines, each of which contains a single author name and the other columns remain the same.
+The **authors** column contains a string with a comma-separated format.  For example, *Gareth Beale, Graeme Earl*. We need to convert it into multiple lines, each of which contains a single author name and the other columns remain the same.
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 papers_authors <- papers %>% 
     mutate(authors = strsplit(authors, ",")) %>% 
     unnest(authors)
@@ -81,10 +76,10 @@ ggplot(count(papers_authors, authors), aes(x = n)) +
   xlim(0,100)
 ```
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 summary(count(papers_authors, authors)$n)
 ```
-From the plot and summary, we found that the number of authors is very skewed. While more than 75% of authors have less than or equal to 2 papers, there are some authors that have publish than a hundred of research papers in the 10 conferences.
+From the plot and summary, we found that the number of authors is very skewed. While more than 75% of authors have less than or equal to 2 papers, there are some authors that have to publish than a hundred research papers in the 10 conferences.
 The names of several authors, especially Chinese authors, are not their full or uniques name. As a result, when we aggregate the data.
 
 ## Venue column
@@ -92,64 +87,64 @@ The names of several authors, especially Chinese authors, are not their full or 
 **venue** is a catgorical string column containing 10 unique values.
 It is useful to know the distribution of papers among the venues.
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(fct_rev(fct_infreq(venue)))) +
   geom_bar(stat="count") +
   coord_flip()
 ```
 
-It appears that some of the venues have significantly higher number of papers than the other especially Lecture Notes in Computer Science and International Conference on Acoustics, Speech, and Signal Processing. When we analyze data using **venue** column, we need to be cautious and use statistics such as mean, meadian, or distribution to decreas the impact of different volumes between venues.
+It appears that some of the venues have a significantly higher number of papers than the other especially Lecture Notes in Computer Science and International Conference on Acoustics, Speech, and Signal Processing. When we analyze data using **venue** column, we need to be cautious and use statistics such as mean, median, or distribution to decrease the impact of different volumes between venues.
 
 
 ## n_citation column
 
 **n_citation** is a numerical column containing the number of citation of each paper
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(n_citation)) +
   geom_bar(stat="count") +
   xlim(0,100)
 ```
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 summary(papers$n_citation)
 ```
 
-The number of citation is very skewed ranging from zero to 10,000 citations per paper with mean = 28.88 and median = 12. Moreover, we also found that the frequency of n_citation is unusually high and seems to often be capped at 50. Our assumption is that the data is topcoded at somepoint of collection process or 50 might be the number of some standards or qualifications of research papers. How ever, it is difficult to figure out what really happens or extrapolate the data, so we will leave it as it is.
+The number of citation is very skewed ranging from zero to 10,000 citations per paper with mean = 28.88 and median = 12. Moreover, we also found that the frequency of n_citation is unusually high and seems to often be capped at 50. Our assumption is that the data is topcoded at some point of collection process or 50 might be the number of some standards or qualifications of research papers. However, it is difficult to figure out what really happens or extrapolate the data, so we will leave it as it is.
 
 ## year column
 
 **year** is a numerical column containing the number of citation of each paper
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(year)) +
   geom_bar(stat="count")
 ```
 
-The number of papers increases drastically from 1980s to 2000s. However, it dropeed sharply in 2007 and remain at roughly the same until 2016. It is also useful to note that the data is collected until 2017. Therefore, the number of papers in 2017 is very small because it is not collected completely at the time.
+The number of papers increases drastically from 1980s to 2000s. However, it dropped sharply in 2007 and remain at roughly the same until 2016. It is also useful to note that the data is collected until 2017. Therefore, the number of papers in 2017 is very small because it is not collected completely at the time.
 
 ## title column
 
-**title** is a discrete numerical column containing the year of publication ofeach paper
+**title** is a discrete numerical column containing the year of publication of each paper
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 papers$title_length <- sapply(papers$title, function(x) length(unlist(strsplit(as.character(x), "\\W+"))))
 
 ggplot(data=papers, aes(title_length)) +
   geom_bar(stat="count")
 ```
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 summary(papers$title_length)
 ```
 
-The title length of papers is right-skewed normal distribution with mean = 10.39. Since the title itself is a long text which is difficult to process, we decide to create a column **title_length** to represent and utilize it further.
+The title length of papers is a right-skewed normal distribution with mean = 10.39. Since the title itself is a long text which is difficult to process, we decided to create a column **title_length** to represent and utilize it further.
 
 ## references column
 
 The **references** column contains string with comma-separated format.  For example, *'8c78e4b0-632b-4293-b491-85b1976675e6', '9cdc54f0-f1a0-4422-ac16-d9164d9371ee'*. We need to convert it into mulitiple lines, each of which contains a single author name and the other columns remain the same.
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 papers_reference <- papers %>% 
     mutate(references = strsplit(references, ",")) %>% 
     unnest(references)
@@ -158,32 +153,33 @@ ggplot(count(papers_reference, references), aes(x = n)) +
   geom_bar() +
   xlim(0,100)
 ```
-```{r}
+
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 summary(count(papers_reference, references)$n)
 ```
 
 
-The median of number of references is as low as 1 which makes us doubt the correctness of the data and decided to verify directly at the actual papers. We found that the number of reference a paper references is not correct which is almost always lower than it should be. This might result from the fact that the referenced papers are not in this database, as a result no id can be given.
- 
- 
- ## topic column
+The median of number of references is as low as 1 which makes us doubt the correctness of the data and decided to verify directly at the actual papers. We found that the number of references a paper references is not correct which is almost always lower than it should be. This might result from the fact that the referenced papers are not in this database, as a result no id can be given.
 
-**topic** is a catgorical string column containing 6 unique values which we generate using the title column.
+ 
+## topic column
 
-```{r}
+**topic** is a categorical string column containing 6 unique values which we generate using the title column.
+
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(fct_rev(fct_infreq(topic)))) +
   geom_bar(stat="count") +
   coord_flip() 
 ```
 
-Each topic contains similar number of research papers ranging from 34,000 to 42,000 papers.
+Each topic contains a similar number of research papers ranging from 34,000 to 42,000 papers.
 
 
-# Main Analysis (Exploratory Data Analysis)
+# 4. Main Analysis (Exploratory Data Analysis)
 
 ## Citation vs Year.
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 citation_summary <- papers %>%
   group_by(year) %>%
   summarise_each(funs(mean, median), n_citation)
@@ -200,7 +196,7 @@ From the grouped bar chart, we observe that the number of citations reached its 
 
 ## Citation vs. Authors
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 top_10_authors <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),total_citation =sum(n_citation)), desc(total_citation)), n=10)
 
 papers_top_authors <- papers_authors %>% 
@@ -216,34 +212,35 @@ ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) +
   ggtitle("Number of Citations of top Authors Over Time")
 ```
 
-We are interested in how each authers, especially the top-cited authors all time, gain their citation over years The cumulative frequency plot give two interesting patterns that while some popular authors accumulate the number of citations over along period of time such as Thomas S. Huang and Vijay Kumar who started to publish their work in these conferences before 1990 until they gain the number of citations up to 10,000 citations in 2017. However, the other pattern that we found is that some other authors gain their number of citations significantly over a short period of time, such as Rodney A. Brooks and Paul C. Kocher who were cited for 5,000 to 10,000 times and became one of the most cited authors within only one and two years respectively.
+We are interested in how each authors, especially the top-cited authors all time, gain their citation over years The cumulative frequency plot give two interesting patterns that while some popular authors accumulate the number of citations over a long period of time such as Thomas S. Huang and Vijay Kumar who started to publish their work in these conferences before 1990 until they gain the number of citations up to 10,000 citations in 2017. However, the other pattern that we found is that some other authors gain their number of citations significantly over a short period of time, such as Rodney A. Brooks and Paul C. Kocher who were cited for 5,000 to 10,000 times and became one of the most cited authors within only one and two years respectively.
 
 
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 top_30_authors_mean <- head(arrange(dplyr::summarise(group_by(papers_authors, authors),mean_citation =mean(n_citation)), desc(mean_citation)), n=30)
 
 ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_citation))) +
   geom_point() + 
   ylab("authors") +
-  xlim(0, 18500)
+  xlim(0, 21000)
 ```
 
-After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The cleveland dot plot show the avarage number of citations of each paper the author published. We found that  many of the authors in this plot does not appear in the all-time list, although their works are cited for over a thousand times on average. This can result from two reasons. The first one is that they are relatively new researchers. For the second reasons, we need to refer back to the previous plot in the case of Anthony I. T. Rowstron and Paul C. Kocher who apper the plot for only few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only subnitted their works to these venues for only few times
+After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a thousand times on average. This can be caused by two reasons. The first one is that they are relatively new researchers. For the second reasons, we need to refer back to the previous plot in the case of Anthony I. T. Rowstron and Paul C. Kocher who appear the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
 
 
 ## Citation vs. Topic
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 topic_freq <- dplyr::summarise(group_by(papers, year, topic), frequency = n())
 
 ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
   geom_line() +
-  ggtitle("Number of Papers from Each Topic over Time")
+  ggtitle("Number of Papers from Each Topic over Time") +
+  xlim(1954, 2016)
 ```
 
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), mean_citaition = mean(n_citation))
 topic_percent_cite <-  group_by(topic_percent_cite, year) %>% 
   mutate(percent = mean_citaition*100/sum(mean_citaition))
@@ -252,20 +249,20 @@ ggplot(topic_percent_cite, aes(year, percent,colour=topic)) +
   ggtitle("Percentage of Topic by Number of CItations Over Time")
 ```
 
-From the line plot, we can  see that the popularity of papers (measured by number of citations p) is changing overtime. Robotics and Autonation was the field that got
+From the line plot, we can see that the popularity of papers (measured by the number of citations p) is changing over time. Robotics and Automation was the field that got
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
   geom_density(alpha = 0.1) +
   xlim(0, 100)
 ```
 
-However, as we dicussed earlier, there is a problem on data with number of citation = 50
+However, as we discussed earlier, there is a problem on data with the number of citation = 50
 
 
 ## Citation vs. Venue
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 venue_citation <-  papers%>%
   select(venue, n_citation)
 
@@ -278,16 +275,16 @@ ggplot() +
   ylim(0, 100)
 ```
 
-The boxplot shows us vast difference in the distribution of citations among all venues. It is obvious that some venues seem to be more popular and get cited than the other. For example the International Conference on Robotics and Automations has the median of citations as high as 40, while the International Geoscience and Remote Sensing Symposium has the median of less than 3 citations. Most of the conference have the median around 10-15 citations per research papers.
+The boxplot shows us a vast difference in the distribution of citations among all venues. It is obvious that some venues seem to be more popular and get cited than the other. For example, the International Conference on Robotics and Automation has the median of citations as high as 40, while the International Geoscience and Remote Sensing Symposium has the median of fewer than 3 citations. Most of the conference have the median around 10-15 citations per research papers.
 Note that the problem of n_citation = 50 is also captured by the boxplot of some, but not all, venues.
 
 ## Citation vs. Title Length
 
-As we tried to make use of title column in our analysis. We found a research, "Papers with shorter titles get more citations"
-<https://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>, which suggest an interesting relationship between length of title with citations. We decide to use scatter plot to see the relationship between the variables.
+As we tried to make use of the title column in our analysis. We found a research, "Papers with shorter titles get more citations"
+<https://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>, which suggest an interesting relationship between title length and citations. We decide to use a scatter plot to see the relationship between the variables.
 
 
-```{r}
+```{r, echo = TRUE, message=FALSE, warning=FALSE}
 title_length_citation <- dplyr::summarise(group_by(papers, title_length),
                                           mean_citation =mean(n_citation))
 title_length_citation$lower <- qpois(0.05, title_length_citation$mean_citation)
@@ -298,4 +295,4 @@ ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
 ```
 
 
-Although there is no obvious linear relation ship between title length and number of citations, the scatter plot reveals an interesting patterns that there are no papers with title length more than 20 words having more than 500 citations like the ones with shorter name. The dot plot with 95% confidence interval between title length and mean citations also confirms the trend that the mean has a decreasing trend as the title length increases.
+Although there is no obvious linear relationship between title length and the number of citations, the scatter plot reveals an interesting pattern that there are no papers with title length more than 20 words having more than 500 citations like the ones with a shorter name. The dot plot with 95% confidence interval between title length and mean citations also confirms the trend that the mean has a decreasing trend as the title length increases.
