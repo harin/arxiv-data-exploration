@@ -123,6 +123,15 @@ ggplot(data=papers, aes(year)) +
   ylab("Number of Papers") +
   xlab("Year") +
   ggtitle("Number of Papers over Time")
+count_by_year = papers %>% filter(year <2017) %>% group_by(year) %>% count()
+
+count_by_year$pct = (count_by_year$n / lag(count_by_year$n) -1) * 100
+ggplot(data=count_by_year, aes(x=year, y=pct)) +
+    geom_bar(stat="identity") +
+    ylab('Percent Change') +
+    ylim(-100, 100) +
+    ggtitle('Yearly Change in Paper Published') +
+    theme_grey(14)
 ```
 
 The number of papers increases drastically from 1960s to 2000s. However, it dropped sharply in 2007 and remain at roughly the same until 2016. It is also useful to note that the data is collected until 2017. Therefore, the number of papers in 2017 is very small because it is not collected completely at the time. We sometimes exclude the data from 2017 in some visualization.
@@ -259,7 +268,16 @@ ggplot(topic_freq, aes(year, frequency,colour=topic)) +
   ggtitle("Number of Papers from Each Topic over Time") +
   xlim(1954, 2016)
 ```
+```{r}
+total_by_year <- papers %>% filter(year < 2017) %>% group_by(year) %>% count()
+topic_pct <- papers %>% filter(year < 2017) %>% group_by(year, topic) %>% count() %>% mutate(pct = n /total_by_year[total_by_year$year == year,]$n)
 
+ggplot(topic_pct, aes(year, pct, colour=topic)) + 
+  geom_line() +
+  ggtitle("Percentage of Paper by Topic over time") +
+  ylab('Percentage of All Papers By Year') +
+  theme_grey(14)
+```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), sum_citaition = sum(n_citation))
@@ -267,7 +285,7 @@ topic_percent_cite <-  group_by(topic_percent_cite, year) %>%
   mutate(percent = sum_citaition*100/sum(sum_citaition))
 ggplot(topic_percent_cite, aes(year, percent,colour=topic)) + 
   geom_line() +
-  ggtitle("Percentage of Topic by Number of CItations Over Time")
+  ggtitle("Percentage of Topic by Number of CItations Over Time") 
 ```
 
 From the line plot, we can see that the popularity of papers (measured by the number of citations p) is changing over time. Robotics and Automation was the field that got
@@ -322,7 +340,8 @@ ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
    geom_errorbar(aes(ymin = lower, ymax = upper), width=.2)+
   ylab("Citations") +
   xlab("Title Length") +
-  ggtitle("Average Citations with 95% Confidence Interval and Title Length")
+  ggtitle("Average Citations and Title Length", subtitle=('Poisson 95% Confidence Interval')) +
+  theme_grey(14)
 ```
 
 The dot plot shows the relationship between average number of citations and title length. Since the distribution of citations resembles a Poisson distribution, we decide to include the 95% confidence interval of Poisson distribution to take into account the deviation. Although we cannot summarize statistically that the title length has a linear relationship with the citations, the plot still show an interesting trend that papers with shorter title length seem to have more citations than those with longer names.
