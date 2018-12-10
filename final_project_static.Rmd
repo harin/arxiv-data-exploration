@@ -25,6 +25,49 @@ library(ggpubr)
 library(extracat)
 ```
 
+# 1. Introduction
+
+The main question that we are looking to answer in this project is what is the current trend in computer science and how it came to be. More specifically, we are interested in questions like what topic is popular in the past, what is popular in the present, and what is starting to gain popularity. We also want to know who are the influential people in these areas and how they are being influential.
+
+## 1.1 Team Members
+
+- Harin Sanghirun
+- Thanaspakorn Niyomkarn
+
+## Member Contributions
+
+Harin is responsible for interactive visualization while Thanaspakorn is responsible the static visualization. The data acquisition, idea generation, and the report was written collaboratively.
+
+# 2. Description of Data
+
+## 2.1 Data Discovery
+
+Originally, we have planned to scrape research paper data from arxiv.org using an readily available python package. However, upon inspection of the data, one very important piece is missing - the citation data. Without the citation data, we are not able to see the paper influence on other papers, and thus its importance.
+
+In the end, we landed on the citation dataset from Open Academic Graph (OAG) which provides basic metadata like title, authors, and abstract on an academic paper, but most importantly the dataset also contains the number of citation that paper receives and the paper that it references. We have chosen the dataset from the DBLP which is a services that provide bibliographic information on computer science journal and proceedings. This allows us to have a dataset that is directly relevant to our question without having to filter through large amount of data. Even though the dataset is already scoped to computer science, it is still large by any standard, containing over 3 millions articles and 25 millions relationships.
+
+## 2.2 Data Acquisition
+
+OAG provides a download link that contain a line-separated JSON data. We then proceed to parse the data using python into pandas dataframe format which can be easily manipulate and clean.
+
+There are over 3 millions research papers in the dataset which is too much for the purpose of exploratory data analysis and too large for local manipulation. Therefore, we have decided to pick the subset of data by selecting top 10 venues that contain the highest number of citation all time. The number of data is reduced to approximately 140,000 rows which is still large, but more practical.
+
+## 2.3 Data Format
+
+The dataset contains 8 columns with 4 text columns, 2 list columns, and 2 numeric columns. A detail description of each column was not given, as a result we have taken the liberty to interpret it using common sense and evidence. The following is our best effort interpretation of each column:
+
+1. id - a unique identifier for the article <string>
+2. title - the article’s title <string>
+3. abstract - a summary of the article <string>
+4. authors - a list of author <list of string>
+5. venues - the publication venue string
+6. references - a list of article id that this articles references <list of id string>
+7. n_citation - The number of citation this article receives <numeric>
+
+At first we debated whether this column means the number of citation this paper receives or how many articles this paper references. To answer this, we count the back link it receives from the references list of other articles and found that it is always less than or equal to n_citation. Since this dataset would probably not contain all the paper that is citing another paper, we conclude that it is the former.
+
+8. year - The publication year <numeric>
+
 ```{r, warning=FALSE}
 c_path <- "citation_only.feather"
 citation_only <- read_feather(c_path)
@@ -209,6 +252,7 @@ Each topic contains a similar number of research papers ranging from 25,000 to 3
 
 \pagebreak
 
+
 # 4. Main Analysis (Exploratory Data Analysis)
 
 ## 4.1 Citation over Time
@@ -380,3 +424,123 @@ ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
 ```
 
 The dot plot shows the relationship between average number of citations and title length. Since the distribution of citations resembles a Poisson distribution, we decide to include the 95% confidence interval of Poisson distribution to take into account the deviation. Although we cannot summarize statistically that the title length has a linear relationship with the citations, the plot still show an interesting trend that papers with shorter title length seem to have more citations than those with longer names.
+
+# 5. Executive Summary
+
+The goal of this report is to assess trend in computer science and how advancement is being gain -- is it through regular contribution from individuals or a leap that is caused by certain paper irregularly. To this end, we have decided the number of paper in each topic is representative of the level of attention it is getting, while the number of citation a paper gets is representative of the influence it has. Due to the large number of paper in the dataset, we have narrowed down the analysis to the papers from the top 10 publication venues by the total number of citation their papers received. This resulted in 140,000 papers.
+
+As the first thing you see being reading any paper, the title is undoubtedly an important attribute. We have analyze the title length with the number of citations it received and have found that short paper receives more citation with significance. Note that this does not mean shorter paper will get more citation, it just means that shorter paper often have more citation.
+
+```{r}
+ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
+   geom_point() +
+   geom_errorbar(aes(ymin = lower, ymax = upper), width=.2)+
+  ylab("Citations") +
+  xlab("Title Length") +
+  ggtitle("Average Citations and Title Length", subtitle=('Poisson 95% Confidence Interval')) +
+  theme_grey(14)
+```
+
+To assess the popularity of computer science, we looked at the number of paper published each year. While looking at the raw number, it seems like the period from 1995 to 2006 have the strongest trend. However, if we look at the percentage change per year, we can see that the two years with the strongest growth is 1959 and 1978. One notable observation is that after year 2006, the number of paper seems to drop to a steady state of around 5000 papers per year.
+
+```{r}
+ggplot(data=papers, aes(year)) +
+  geom_bar(stat="count")+
+  ylab("Number of Papers") +
+  xlab("Year") +
+  ggtitle("Number of Papers over Time") +
+  theme_grey(14)
+
+ggplot(data=count_by_year, aes(x=year, y=pct)) +
+    geom_bar(stat="identity") +
+    ylab('Percent Change') +
+    ylim(-100, 100) +
+    ggtitle('Yearly Change in Paper Published') +
+    theme_grey(14)
+
+```
+
+To analyze popularity of computer science fields, we have grouped the papers into 5 different categories using Latent Dirichlet Allocation model to automatically categorize them based on their title. The resulting graph says the same story as the paper per year chart above. However, once we have normalized the number of paper each year into percentage of total paper in each year, we are able to see how each topic does compared to each other. While all topic is undoubtedly growing, we can see that Pattern Recognition and Machine Learning and Robotics and Automation is on the rise, on the other hand, Signal and Speech Processing is growing slower than others. This is consistent with everyday experience where all people talk about is Artificial Intelligence, a superset of the two growing fields.
+
+```{r}
+ggplot(topic_pct, aes(year, pct, colour=topic)) + 
+  geom_line() +
+  ggtitle("Percentage of Papers by Topic over time") +
+  ylab('Percentage of All Papers By Year') +
+  theme_grey(14)
+```
+
+Looking at the individual level of authors, we have found that most of the top contributing authors contributed regularly.
+
+```{r}
+ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) + 
+  geom_line() +
+  geom_point(size = 1) +
+  ggtitle("Number of Citations of top Authors Over Time") +
+  ylab("Cumulated Citations") +
+  xlab("Year")
+```
+
+In conclusion, we can see that the field of computer science is in its mature stage. However, the research interest in Artificial Intelligence is growing faster than other, while Signal and Speech processing seems to be falling behind in growth. Moreover, the progress in the field is made by continuous hard work by individual in the field.
+
+# 5. Interactive Component
+
+(The interactive component can be found at https://harrr.in/network.html)
+
+## 5.1 Overview
+
+![](figures/graph1.png)
+
+The goal of the interactive component is to visual that impact that each paper has on other papers. Since citation between papers is a relationship which naturally translates to a graph, we have chosen to use a graph to visualize their relationship.
+
+Even though we have already subsetted the original data to the 10 most popular venues, it is still too large to be visualize using D3. A web page with 140,000 DOM would cripple the browser. As a result, we have chosen to see the interaction of only the most important papers and have scope down to 1000 papers with the most citations. Furthermore, some data processing is needed in order for us to visualize it with D3. D3 force layout requires 2 objects, one is the array of nodes, and the other is an array edges. We did this in python by looping through the nodes and create one edges for every reference in a node. Finally, we use the to_json method of pandas to conveniently convert them to a json data file.
+
+Upon opening the webpage, you will be presented with a graph with nodes representing papers and edge representing references of one paper to another. The graph was created using D3 force layout. The edge does not have arrow, but if you click on a node, they will be colored on a scale with red representing the node you click and it will gradually turn yellow to show the distance between that paper and other paper it has influence on. The right hand side of the page will have information about the papers in the cluster order by distance from the central node. Please note that the distance is limited to 3 to keep the cluster readable. 
+
+![](figures/graph2.png)
+
+
+Clicking on a node reveal its title, year published, author, and the number of citations it received. Since the subset of data we are visualizing is an outlier in term of number of citations, the citation value do not spread out evenly. If we were to have the radius of the circle be proportional to the number of citation, it would result in a couple of huge circle that fills the page with other small ones that are not visible. Instead, we have chosen to use a log scale so we can roughly see the ranking of the paper by citation, while keeping the circle relatively similar in size.
+
+## 5.2 Data Limitations and Consideration
+
+Since we are subsetting only 1000 papers with the most citations in the top 10 venues, most of these paper would be considered influential. In this subset, even the lowest cited paper in this subset has over 900 citations! So we have to keep in mind that even though the circle is small, it is still actually an influential paper. Furthermore, since we only have nodes with the most citations, we are only visualizing interaction among highly influential papers. This means that a paper can have impact on lots of other paper without having an edges at all in this graph.
+
+## 5.3 Observations
+
+- The use of graph to visualize relationships between papers have revealed many observations that would have not been obvious otherwise. Here are some notable observations:
+
+- The number of citation it receives does not mean that it is highly cited by other highly cited papers. Compare the two graphs below. Both paper have over 20 thousand citations, however, the first one is much more highly referenced in other highly cited paper.
+
+![](figures/graph3.png)
+![](figures/graph4.png)
+
+- This visualization did not incorporate the concept of time. The obviously impact of time is that the older the paper, the more potential it has to be cited. Additionally, a paper that references another can only be newer than the paper it references. So the node that we click on will always be the older paper in that cluster. It would be interesting to see the effect of time on the graph.
+
+- Some paper is not highly cited by itself, but influences other highly cited paper. For example, here we have a paper with less than 3000 citations, but is referenced by one paper with 20 thousand citation and another with 10 thousand. This shows that the number of citation alone is not enough in evaluating its influence.
+
+![](figures/graph5.png)
+
+- There are certain node that is highly cited but has very few edges in the graph. This could be interpret as a misclassification since this paper would be viewed as more important in another graph that share more in common with it. For example, the paper in the graph below is probably more appropriate to be in a graph of Bioinformatics, rather than computer science.
+
+![](figures/graph6.png)
+
+## 5.4 Improvements
+
+- It would be interesting to see how each researcher has an influence on other research or topics. However, this will require some data mangling as the data we have is not center around people, but around papers.
+Visualize other data subset such as specific subfield.
+- Fine tuning force layout parameter might allow us to better visualize cluster and interactions among them.
+- Find ways to incorporate time into the visualization, like how a paper grows over time. This would probably require a subset with a relationship graph with a center around a specific paper since we would be required to have a large sample of paper that references a single paper to see any temporal effect.
+- Since the number of edges grow exponentially in number of nodes, it is the reason why we can only show 1000 nodes in the visualization. Removing the edge will greatly reduce the computational requirement and allow us to see more nodes, but at a cost of not being able to see direct relationships.
+
+# 6. Conclusion
+
+One trend that is clear from the data analysis is that computer science is in its maturity. However, the area of research within computer science itself is still shifting, most notably are the shift from Signal and Speech processing to Artificial Intelligence. Furthermore, from our interactive visualization, we are able to see the flaws in our analysis such as the use of citation as our core metric for impact and not optimal subsetting of data. However, the interactive graph is a capable tool in to explore a topic in computer science, since by clicking on a node, we can see how that knowledge is being use and allow the reader to dive deeper into that subfield.
+
+Even though our analysis have answer many question we have, it has also create questions in itself. For example, the title length and citation analysis have shown that there is a correlation between short title and number of citation, however, we do not know if this is a causal relationship. Another interesting observation is the fact that papers from 30 years ago seem to be getting the most citation, but is it because paper in an infancy of a subject is more likely to be impactful, or because the time allow people to discover and use it?
+
+# 7. Citation
+
+Jie Tang, Jing Zhang, Limin Yao, Juanzi Li, Li Zhang, and Zhong Su. ArnetMiner: Extraction and Mining of Academic Social Networks. In Proceedings of the Fourteenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (SIGKDD'2008). pp.990-998.
+
+Deng, Boer. “Papers with Shorter Titles Get More Citations.” Nature News, Nature Publishing Group, 16 Aug. 2015, www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246.
