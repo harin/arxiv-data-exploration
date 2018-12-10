@@ -123,7 +123,19 @@ The number of citation is very skewed ranging from zero to 10,000 citations per 
 
 ```{r}
 ggplot(data=papers, aes(year)) +
-  geom_bar(stat="count")
+  geom_bar(stat="count") +
+  ggtitle('Number of Paper Published per Year') +
+  theme_grey(14)
+
+count_by_year = papers %>% filter(year <2017) %>% group_by(year) %>% count()
+
+count_by_year$pct = (count_by_year$n / lag(count_by_year$n) -1) * 100
+ggplot(data=count_by_year, aes(x=year, y=pct)) +
+    geom_bar(stat="identity") +
+    ylab('Percent Change') +
+    ylim(-100, 100) +
+    ggtitle('Yearly Change in Paper Published') +
+    theme_grey(14)
 ```
 
 The number of papers increases drastically from 1980s to 2000s. However, it dropeed sharply in 2007 and remain at roughly the same until 2016. It is also useful to note that the data is collected until 2017. Therefore, the number of papers in 2017 is very small because it is not collected completely at the time.
@@ -241,7 +253,16 @@ ggplot(topic_freq, aes(year, frequency,colour=topic)) +
   geom_line() +
   ggtitle("Number of Papers from Each Topic over Time")
 ```
+```{r}
+total_by_year <- papers %>% filter(year < 2017) %>% group_by(year) %>% count()
+topic_pct <- papers %>% filter(year < 2017) %>% group_by(year, topic) %>% count() %>% mutate(pct = n /total_by_year[total_by_year$year == year,]$n)
 
+ggplot(topic_pct, aes(year, pct, colour=topic)) + 
+  geom_line() +
+  ggtitle("Percentage of Paper by Topic over time") +
+  ylab('Percentage of All Papers') +
+  theme_grey(14)
+```
 
 ```{r}
 topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), mean_citaition = mean(n_citation))
@@ -249,7 +270,7 @@ topic_percent_cite <-  group_by(topic_percent_cite, year) %>%
   mutate(percent = mean_citaition*100/sum(mean_citaition))
 ggplot(topic_percent_cite, aes(year, percent,colour=topic)) + 
   geom_line() +
-  ggtitle("Percentage of Topic by Number of CItations Over Time")
+  ggtitle("Percentage of Topic by Number of CItations Over Time") 
 ```
 
 From the line plot, we can  see that the popularity of papers (measured by number of citations p) is changing overtime. Robotics and Autonation was the field that got
@@ -294,7 +315,12 @@ title_length_citation$lower <- qpois(0.05, title_length_citation$mean_citation)
 title_length_citation$upper <- qpois(0.95, title_length_citation$mean_citation)
 ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
    geom_point() +
-   geom_errorbar(aes(ymin = lower, ymax = upper), width=.2)
+   geom_errorbar(aes(ymin = lower, ymax = upper), width=.2) +
+   xlab('Title Length (Words)') + 
+  ylab('Mean Number of Citations') +
+  ggtitle('Effect of Title Length of Citations Received',
+          subtitle='Poisson 95% Confidence Interval') +
+  theme_grey(14)
 ```
 
 
