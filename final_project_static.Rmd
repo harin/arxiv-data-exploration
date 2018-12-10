@@ -84,11 +84,11 @@ summary(count(papers_authors, authors)$n)
 ```
 From the plot and summary, we found that the number of authors is very skewed. While more than 75% of authors have less than or equal to 2 papers, there are some authors that have published more than a hundred research papers in the 10 conferences.
 
-The names of several authors, especially Chinese authors, are not their full or uniques name such as Wei Wang and Tomasi. As a result, when we aggregate the data, we usually find these names with unusually high frequency. This problem cannot be solved easily using just the cuurent dataset. However, we do not see these names much in our analysis on subsetted data and after using average number instead of frequency.
+The names of several authors, especially Chinese authors, are not their full or uniques name such as Wei Wang and Tomasi. As a result, when we aggregate the data, we usually find these names with unusually high frequency. This problem cannot be solved easily using just the current dataset. However, we do not see these names much in our analysis on subsetted data and after using average number instead of frequency.
 
 ## 3.5 *venue* column
 
-**venue** is a catgorical string column containing 10 unique values.
+**venue** is a categorical string column containing 10 unique values.
 It is useful to know the distribution of papers among the venues.
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -273,7 +273,7 @@ ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_cit
   coord_cartesian(xlim = c(0,21000))
 ```
 
-After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a 10,000 times on average. This can be caused by two reasons. The first one is that they are relatively new researchers who has published only a few works. For the second reasons, we need to refer back to the previous plot in the case of Stephane Mallat who appears the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
+After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a 10,000 times on average. This can be caused by two reasons. The first one is that they are relatively new researchers who has published only a few works. For the second reasons, we need to refer back to the previous plot in the case of Stephane Mallat who appears in the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
 
 \pagebreak
 
@@ -306,7 +306,7 @@ ggplot(topic_pct, aes(year, pct, colour=topic)) +
   theme_grey(14)
 ```
 
-By comparing by percentage, we can see the trend clearer that from 1960 to 1980, the papers on Signal and Speech Processing dominates imterms of the number of papers among all Computer Science publications. We can also see the Pattern Recognition and Machine Learning field gaining its volume share during the period. In the recent years, we can also see the trend in popularity of Machine Learning and Conputer Vision field. However, Signal and Speech Processing which once had a lot of interest in the past is having the least contribution volume.
+By comparing by percentage, we can see the trend clearer that from 1960 to 1980, the papers on Signal and Speech Processing dominates in terms of the number of papers among all Computer Science publications. We can also see the Pattern Recognition and Machine Learning field gaining its volume share during the period. In the recent years, we can also see the trend in popularity of Machine Learning and Computer Vision field. However, Signal and Speech Processing which once had a lot of interest in the past is having the least contribution volume.
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 topic_percent_cite <- dplyr::summarise(group_by(papers, year, topic), 
