@@ -513,7 +513,10 @@ Since we are subsetting only 1000 papers with the most citations in the top 10 v
 - The number of citation it receives does not mean that it is highly cited by other highly cited papers. Compare the two graphs below. Both paper have over 20 thousand citations, however, the first one is much more highly referenced in other highly cited paper.
 
 ![](figures/graph3.png)
+
+
 ![](figures/graph4.png)
+
 
 - This visualization did not incorporate the concept of time. The obviously impact of time is that the older the paper, the more potential it has to be cited. Additionally, a paper that references another can only be newer than the paper it references. So the node that we click on will always be the older paper in that cluster. It would be interesting to see the effect of time on the graph.
 
