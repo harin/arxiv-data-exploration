@@ -221,7 +221,9 @@ cumsum_authors_citation <- authors_citation %>% group_by(authors) %>% mutate(cum
 ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) + 
   geom_line() +
   geom_point(size = 1) +
-  ggtitle("Number of Citations of top Authors Over Time")
+  ggtitle("Number of Citations of top Authors Over Time") +
+  ylab('Cumulative Citations') +
+  theme_grey(14)
 ```
 
 We are interested in how each authors, especially the top-cited authors all time, gain their citation over years The cumulative frequency plot give two interesting patterns that while some popular authors accumulate the number of citations over a long period of time such as Thomas S. Huang and Vijay Kumar who started to publish their work in these conferences before 1990 until they gain the number of citations up to 10,000 citations in 2017. However, the other pattern that we found is that some other authors gain their number of citations significantly over a short period of time, such as Rodney A. Brooks and Paul C. Kocher who were cited for 5,000 to 10,000 times and became one of the most cited authors within only one and two years respectively.
@@ -257,7 +259,7 @@ topic_pct <- papers %>% filter(year < 2017) %>% group_by(year, topic) %>% count(
 ggplot(topic_pct, aes(year, pct, colour=topic)) + 
   geom_line() +
   ggtitle("Percentage of Paper by Topic over time") +
-  ylab('Percentage of All Papers') +
+  ylab('Percentage of All Papers By Year') +
   theme_grey(14)
 ```
 
