@@ -73,7 +73,7 @@ papers_authors <- papers %>%
 
 ggplot(count(papers_authors, authors), aes(x = n)) +
   geom_bar() +
-  xlim(0,100)
+  coord_cartesian(xlim = c(0,100))
 ```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -103,7 +103,7 @@ It appears that some of the venues have a significantly higher number of papers 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(n_citation)) +
   geom_bar(stat="count") +
-  xlim(0,100)
+  coord_cartesian(xlim = c(0,100))
 ```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -151,7 +151,7 @@ papers_reference <- papers %>%
 
 ggplot(count(papers_reference, references), aes(x = n)) +
   geom_bar() +
-  xlim(0,100)
+  coord_cartesian(xlim = c(0,100))
 ```
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
@@ -222,7 +222,7 @@ top_30_authors_mean <- head(arrange(dplyr::summarise(group_by(papers_authors, au
 ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_citation))) +
   geom_point() + 
   ylab("authors") +
-  xlim(0, 21000)
+  coord_cartesian(xlim = c(0,21000))
 ```
 
 After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a thousand times on average. This can be caused by two reasons. The first one is that they are relatively new researchers. For the second reasons, we need to refer back to the previous plot in the case of Anthony I. T. Rowstron and Paul C. Kocher who appear the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
@@ -254,7 +254,7 @@ From the line plot, we can see that the popularity of papers (measured by the nu
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
   geom_density(alpha = 0.1) +
-  xlim(0, 100)
+  coord_cartesian(xlim = c(0,500))
 ```
 
 However, as we discussed earlier, there is a problem on data with the number of citation = 50
@@ -271,8 +271,8 @@ citation_only$venue <- "All venues"
 citation_only <- rbind(venue_citation, citation_only)
 ggplot() + 
   geom_boxplot(data = citation_only, aes(x = reorder(venue, n_citation, FUN = median), y = n_citation)) +
-  coord_flip() +
-  ylim(0, 100)
+  coord_flip(ylim = c(0, 250))
+  
 ```
 
 The boxplot shows us a vast difference in the distribution of citations among all venues. It is obvious that some venues seem to be more popular and get cited than the other. For example, the International Conference on Robotics and Automation has the median of citations as high as 40, while the International Geoscience and Remote Sensing Symposium has the median of fewer than 3 citations. Most of the conference have the median around 10-15 citations per research papers.
