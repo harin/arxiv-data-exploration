@@ -221,8 +221,18 @@
             function colorForLevel(i) {
                 return d3.schemeYlOrRd[maxAncestryLevel + 2][maxAncestryLevel - 1 - i]
             }
+            
+            const topicDict = {}
+            var topicSize = 0
+            function colorForTopic(topic) {
+                if (topicDict[topic] == null) {
+                    topicDict[topic] = topicSize++
+                }
+                return d3.schemeYlOrRd[5][topicDict[topic]]
+            }
+
             async function main() {
-                const data = await d3.json('paper_graph.json')
+                const data = await d3.json('paper_graph2.json')
                 const linkData = data.links
                 const nodeData = data.nodes
 
@@ -443,6 +453,7 @@
                         .merge(u)
                         .attr('cx', d => d.x)
                         .attr('cy', d => d.y)
+                        .style('fill', (d) => colorForTopic(d.topic))
                         .on('click', paperNodeClickHandler)
 
                     u.exit().remove()
