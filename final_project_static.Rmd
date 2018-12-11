@@ -1,5 +1,10 @@
 ---
+title: |
+  <center> STAT GR5702: Final Project </center>
+  <center> Research Paper Citations Analysis </center>
 output:
+  html_document:
+    df_print: paged
   pdf_document:
     latex_engine: xelatex
 mainfont: Arial
@@ -27,7 +32,7 @@ library(extracat)
 
 # 1. Introduction
 
-The main question that we are looking to answer in this project is what is the current trend in computer science and how it came to be. More specifically, we are interested in questions like what topic is popular in the past, what is popular in the present, and what is starting to gain popularity. We also want to know who are the influential people in these areas and how they are being influential.
+The main question that we are looking to answer in this project is what is the current trend in computer science and how it came to be. More specifically, we are interested in questions like what topic is popular in the past, what is popular in the present, and what is starting to gain popularity. We also want to know who are the influential people in these areas and how they are being influential. Moreover, we are interested in the contribution of papers as chains of citations or how a publication ripples an impact to the research community.
 
 ## 1.1 Team Members
 
@@ -48,23 +53,37 @@ In the end, we landed on the citation dataset from Open Academic Graph (OAG) whi
 
 ## 2.2 Data Acquisition
 
-OAG provides a download link that contain a line-separated JSON data. We then proceed to parse the data using python into pandas dataframe format which can be easily manipulate and clean.
+OAG provides a download link that contain a line-separated JSON data. We then proceed to parse the data using python into pandas data frame format which can be easily manipulate and clean.
 
 There are over 3 millions research papers in the dataset which is too much for the purpose of exploratory data analysis and too large for local manipulation. Therefore, we have decided to pick the subset of data by selecting top 10 venues that contain the highest number of citation all time. The number of data is reduced to approximately 140,000 rows which is still large, but more practical.
+
+\pagebreak
+
+The data preprocessing steps before reading into R can be summarized as follows:
+
+1. Download the data, DBLP-Citation-network V10, from https://aminer.org/citation.
+2. Read the downloaded file into python, convert it into a data frame.
+3. Remove **abstract** column.
+4. Generate an additional **topic** column.
+5. Replace NaN values in **references** column with an empty list.
+6. Convert list-like columns, **authors**, **references**,  to string.
+7. Output files for R
+    - ml_papers_2.feather containing the subsetted and processed data of 10 most cited venues.
+    - citation_only.feather containing only **n_citations ** column of all papers.
 
 ## 2.3 Data Format
 
 The dataset contains 8 columns with 4 text columns, 2 list columns, and 2 numeric columns. A detail description of each column was not given, as a result we have taken the liberty to interpret it using common sense and evidence. The following is our best effort interpretation of each column:
 
-1. id - a unique identifier for the article <string>
-2. title - the article’s title <string>
-3. abstract - a summary of the article <string>
-4. authors - a list of author <list of string>
-5. venues - the publication venue string
-6. references - a list of article id that this articles references <list of id string>
-7. n_citation - The number of citation this article receives <numeric>
+1. id - a unique identifier for the article \<string\>
+2. title - the article’s title \<string\>
+3. abstract - a summary of the article \<string\>
+4. authors - a list of author \<list of string\>
+5. venues - the publication venue<string\>
+6. references - a list of article id that this articles references \<list of id string\>
+7. n_citation - The number of citation this article receives \<numeric\>
 
-At first we debated whether this column means the number of citation this paper receives or how many articles this paper references. To answer this, we count the back link it receives from the references list of other articles and found that it is always less than or equal to n_citation. Since this dataset would probably not contain all the paper that is citing another paper, we conclude that it is the former.
+At first we debated whether this column means the number of citation this paper receives or how many articles this paper references. To answer this, we count the backward links it receives from the references list of other articles and found that it is always less than or equal to n_citation. Since this dataset would probably not contain all the paper that is citing another paper, we conclude that it is the former.
 
 8. year - The publication year <numeric>
 
@@ -82,7 +101,7 @@ papers <- read_feather(path)
 
 ## 3.1 Python preprocessing
 
-The raw data downloaded from the source is in line-separated JSON format. We first read the data, convert it into a data frame format, and perform data cleaning using python. From 8 columns, we remove the *abstract* column out because the column contains very long string which consumes large memiry and is difficult to interpret and visualize. There are two columns that contain numeric values, **n_citation** and **year**. The **authors** and **references** column contain lists of string values which we convert to string in comma-separated format. The remaining three columns, **id**, **title** and **venue**, has string type values.
+The raw data downloaded from the source is in line-separated JSON format. We first read the data, convert it into a data frame format, and perform data cleaning using python. From 8 columns, we remove the *abstract* column out because the column contains very long string which consumes large memory and is difficult to interpret and visualize. There are two columns that contain numeric values, **n_citation** and **year**. The **authors** and **references** column contain lists of string values which we convert to string in comma-separated format. The remaining three columns, **id**, **title** and **venue**, has string type values.
 
 As mentioned earlier, we then subset data by selecting the papers from 10 venues with the highest citations for further analysis.
 
@@ -129,6 +148,8 @@ From the plot and summary, we found that the number of authors is very skewed. W
 
 The names of several authors, especially Chinese authors, are not their full or uniques name such as Wei Wang and Tomasi. As a result, when we aggregate the data, we usually find these names with unusually high frequency. This problem cannot be solved easily using just the current dataset. However, we do not see these names much in our analysis on subsetted data and after using average number instead of frequency.
 
+\pagebreak
+
 ## 3.5 *venue* column
 
 **venue** is a categorical string column containing 10 unique values.
@@ -146,6 +167,7 @@ ggplot(data=papers, aes(fct_rev(fct_infreq(venue)))) +
 
 It appears that some of the venues have a significantly higher number of papers than the other especially Lecture Notes in Computer Science, International Conference on Acoustics, Speech, and Signal Processing, and International Conference on Robotics and Automation. When we analyze data using **venue** column, we need to be cautious and use statistics such as mean, median, or distribution to decrease the impact of different volumes between venues.
 
+\pagebreak
 
 ## 3.6 *n_citation* column
 
@@ -165,6 +187,8 @@ summary(papers$n_citation)
 ```
 
 The number of citation is very skewed ranging from zero to 24,182 citations per paper with mean = 28.88 and median = 12. Moreover, we also found that the frequency of n_citation is unusually high and seems to often be capped at 50. Our assumption is that the data is topcoded at some point of collection process or 50 might be the number of some standards or qualifications of research papers. However, it is difficult to figure out what really happens or extrapolate the data, so we will leave it as it is.
+
+\pagebreak
 
 ## 3.7 *year* column
 
@@ -234,6 +258,7 @@ summary(count(papers_reference, references)$n)
 
 The median of number of references is as low as 1 which makes us doubt the correctness of the data and decided to verify directly at the actual papers. We found that the number of references a paper references is not correct in the case that it is almost always lower than it should be. This might result from the fact that the referenced papers are not in this database, as a result no id can be assigned and included in the list of references. Again, there is no way to fix the problem using the given dataset.
 
+\pagebreak
  
 ## 3.10 *topic* column
 
@@ -271,9 +296,9 @@ ggplot(melt(citation_summary, id.vars='year'),
 ```
 
 Since the number of papers in each year differs substantially. It is more suitable to compare the number of citations across year using mean as a summarized statistics along with median which allows us to see the middle value better in the case that the data is asymmetric. 
-From the grouped bar chart, we observe that the avaerage number of citations reached its peak during 1955, 1975, and 1990, then it gradually decreases until present. The reason is likely to be that the researches published in the past have been cited longer than the more recent publications. Moreover, it might be the case that the papers from early years tend to be more fundamental which is more common to be cited than more applied papers published later. However, there is not sufficient data on the time of each citation and whether the research is fundamental or applied to verify these assumptions from this dataset.
+From the grouped bar chart, we observe that the average number of citations reached its peak during 1955, 1975, and 1990, then it gradually decreases until present. The reason is likely to be that the researches published in the past have been cited longer than the more recent publications. Moreover, it might be the case that the papers from early years tend to be more fundamental which is more common to be cited than more applied papers published later. However, there is not sufficient data on the time of each citation and whether the research is fundamental or applied to verify these assumptions from this dataset.
 
-The bars for median can capture the abnormality of the number of citations equal to 50 which makes the plot contain less valuable information about the middle value of citaions over years.
+The bars for median can capture the abnormality of the number of citations equal to 50 which makes the plot contain less valuable information about the middle value of citations over years.
 
 
 ## 4.2 Citation and Authors
@@ -319,7 +344,6 @@ ggplot(top_30_authors_mean, aes(x = mean_citation, y = reorder(authors, mean_cit
 
 After exploring the total number of citation. We found that some authors have been publishing their work longer the others which make us curious about the impact from each paper they produced. The Cleveland dot plot show the average number of citations of each paper the author published. We found that many of the authors in this plot does not appear in the all-time list, although their works are cited for over a 10,000 times on average. This can be caused by two reasons. The first one is that they are relatively new researchers who has published only a few works. For the second reasons, we need to refer back to the previous plot in the case of Stephane Mallat who appears in the plot for only a few years. Since this is the subsetted data of 10 venues, it is possible that they are famous authors but only submitted their works to these venues for only a few times
 
-\pagebreak
 
 ## 4.3 Citation and Topic
 
@@ -329,13 +353,14 @@ topic_freq <- dplyr::summarise(group_by(papers, year, topic), frequency = n())
 ggplot(topic_freq, aes(year, frequency,colour=topic)) + 
   geom_line() +
   ggtitle("Number of Papers from Each Topic over Time") +
-  xlim(1954, 2016)
+  xlim(1954, 2016) + 
+  theme(legend.position = c(0.25, 0.75))
 ```
 
 The number of papers in each topic has a similar general trend over the papers overall as discussed earlier that it reached its peak in 2006 , then falls drastically and remians about the same level until present. However, it is difficult to discuss the ranking and trend of topics from this frequency plot. Therefore, we create the percentage version of this graph and discuss it in the next plot.
 
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 total_by_year <- papers %>% filter(year < 2017) %>% group_by(year) %>% count()
 topic_pct <- papers %>% 
   filter(year < 2017) %>% 
@@ -347,7 +372,8 @@ ggplot(topic_pct, aes(year, pct, colour=topic)) +
   geom_line() +
   ggtitle("Percentage of Papers by Topic over time") +
   ylab('Percentage of All Papers By Year') +
-  theme_grey(14)
+  theme_grey(14) + 
+  theme(legend.text=element_text(size = rel(0.65)), legend.position = c(0.75, 0.75))
 ```
 
 By comparing by percentage, we can see the trend clearer that from 1960 to 1980, the papers on Signal and Speech Processing dominates in terms of the number of papers among all Computer Science publications. We can also see the Pattern Recognition and Machine Learning field gaining its volume share during the period. In the recent years, we can also see the trend in popularity of Machine Learning and Computer Vision field. However, Signal and Speech Processing which once had a lot of interest in the past is having the least contribution volume.
@@ -359,7 +385,8 @@ topic_percent_cite <-  group_by(topic_percent_cite, year) %>%
   mutate(percent = sum_citaition*100/sum(sum_citaition))
 ggplot(topic_percent_cite, aes(year, percent,colour=topic)) + 
   geom_line() +
-  ggtitle("Percentage of Topic by Number of CItations Over Time") 
+  ggtitle("Percentage of Topic by Number of Citations Over Time") + 
+  theme(legend.position = c(0.75, 0.75))
 ```
 
 From the line plot, we can see that the popularity of papers (measured by the number of citations) has a similar pattern with the percentage of papers by topic, but with higher variance. This suggests an interesting relationship between number of papers and citations that when papers are published more in a field, the citations percentage usually grow accordingly.
@@ -370,12 +397,13 @@ ggplot(papers, aes(n_citation, fill = topic, colour = topic)) +
   coord_cartesian(xlim = c(0,500))+
   ylab("Density") +
   xlab("Citations") +
-  ggtitle("Density Plot of Citations among Topics")
+  ggtitle("Density Plot of Citations among Topics")+ 
+  theme(legend.position = c(0.75, 0.75))
 ```
 
-The density plot of citations of each topic has very similar shape. Although it is very subtle, we can see that Computer Vision has the highest density at the higher number of citaions.
+The density plot of citations of each topic has very similar shape. Although it is very subtle, we can see that Computer Vision has the highest density at the higher number of citations.
 
-However, we believe that the density plot will give us more information about the distribution of citaions in each topic if it is not disturbed by the unusal peak at 50. 
+However, we believe that the density plot will give us more information about the distribution of citations in each topic if it is not disturbed by the unusal peak at 50. 
 
 
 ## 4.4 Citation and Venue
@@ -425,13 +453,15 @@ ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
 
 The dot plot shows the relationship between average number of citations and title length. Since the distribution of citations resembles a Poisson distribution, we decide to include the 95% confidence interval of Poisson distribution to take into account the deviation. Although we cannot summarize statistically that the title length has a linear relationship with the citations, the plot still show an interesting trend that papers with shorter title length seem to have more citations than those with longer names.
 
+\pagebreak
+
 # 5. Executive Summary
 
 The goal of this report is to assess trend in computer science and how advancement is being gain -- is it through regular contribution from individuals or a leap that is caused by certain paper irregularly. To this end, we have decided the number of paper in each topic is representative of the level of attention it is getting, while the number of citation a paper gets is representative of the influence it has. Due to the large number of paper in the dataset, we have narrowed down the analysis to the papers from the top 10 publication venues by the total number of citation their papers received. This resulted in 140,000 papers.
 
 As the first thing you see being reading any paper, the title is undoubtedly an important attribute. We have analyze the title length with the number of citations it received and have found that short paper receives more citation with significance. Note that this does not mean shorter paper will get more citation, it just means that shorter paper often have more citation.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
    geom_point() +
    geom_errorbar(aes(ymin = lower, ymax = upper), width=.2)+
@@ -441,16 +471,20 @@ ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
   theme_grey(14)
 ```
 
+\pagebreak
+
 To assess the popularity of computer science, we looked at the number of paper published each year. While looking at the raw number, it seems like the period from 1995 to 2006 have the strongest trend. However, if we look at the percentage change per year, we can see that the two years with the strongest growth is 1959 and 1978. One notable observation is that after year 2006, the number of paper seems to drop to a steady state of around 5000 papers per year.
 
-```{r}
+```{r, message=FALSE, warning=FALSE, out.width = '80%'}
 ggplot(data=papers, aes(year)) +
   geom_bar(stat="count")+
   ylab("Number of Papers") +
   xlab("Year") +
   ggtitle("Number of Papers over Time") +
   theme_grey(14)
+```
 
+```{r, message=FALSE, warning=FALSE, out.width = '80%'}
 ggplot(data=count_by_year, aes(x=year, y=pct)) +
     geom_bar(stat="identity") +
     ylab('Percent Change') +
@@ -460,19 +494,25 @@ ggplot(data=count_by_year, aes(x=year, y=pct)) +
 
 ```
 
+\pagebreak
+
 To analyze popularity of computer science fields, we have grouped the papers into 5 different categories using Latent Dirichlet Allocation model to automatically categorize them based on their title. The resulting graph says the same story as the paper per year chart above. However, once we have normalized the number of paper each year into percentage of total paper in each year, we are able to see how each topic does compared to each other. While all topic is undoubtedly growing, we can see that Pattern Recognition and Machine Learning and Robotics and Automation is on the rise, on the other hand, Signal and Speech Processing is growing slower than others. This is consistent with everyday experience where all people talk about is Artificial Intelligence, a superset of the two growing fields.
 
-```{r}
+
+```{r, message=FALSE, warning=FALSE}
 ggplot(topic_pct, aes(year, pct, colour=topic)) + 
   geom_line() +
   ggtitle("Percentage of Papers by Topic over time") +
   ylab('Percentage of All Papers By Year') +
-  theme_grey(14)
+  theme_grey(14) + 
+  theme(legend.text=element_text(size = rel(0.65)), legend.position = c(0.76, 0.75))
 ```
+
+\pagebreak
 
 Looking at the individual level of authors, we have found that most of the top contributing authors contributed regularly.
 
-```{r}
+```{r, message=FALSE, warning=FALSE}
 ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) + 
   geom_line() +
   geom_point(size = 1) +
@@ -483,11 +523,11 @@ ggplot(cumsum_authors_citation, aes(year, cum_citations,colour=authors)) +
 
 In conclusion, we can see that the field of computer science is in its mature stage. However, the research interest in Artificial Intelligence is growing faster than other, while Signal and Speech processing seems to be falling behind in growth. Moreover, the progress in the field is made by continuous hard work by individual in the field.
 
-# 5. Interactive Component
+# 6. Interactive Component
 
 (The interactive component can be found at https://harrr.in/network.html)
 
-## 5.1 Overview
+## 6.1 Overview
 
 ![](figures/graph1.png)
 
@@ -502,11 +542,11 @@ Upon opening the webpage, you will be presented with a graph with nodes represen
 
 Clicking on a node reveal its title, year published, author, and the number of citations it received. Since the subset of data we are visualizing is an outlier in term of number of citations, the citation value do not spread out evenly. If we were to have the radius of the circle be proportional to the number of citation, it would result in a couple of huge circle that fills the page with other small ones that are not visible. Instead, we have chosen to use a log scale so we can roughly see the ranking of the paper by citation, while keeping the circle relatively similar in size.
 
-## 5.2 Data Limitations and Consideration
+## 6.2 Data Limitations and Consideration
 
 Since we are subsetting only 1000 papers with the most citations in the top 10 venues, most of these paper would be considered influential. In this subset, even the lowest cited paper in this subset has over 900 citations! So we have to keep in mind that even though the circle is small, it is still actually an influential paper. Furthermore, since we only have nodes with the most citations, we are only visualizing interaction among highly influential papers. This means that a paper can have impact on lots of other paper without having an edges at all in this graph.
 
-## 5.3 Observations
+## 6.3 Observations
 
 - The use of graph to visualize relationships between papers have revealed many observations that would have not been obvious otherwise. Here are some notable observations:
 
@@ -528,7 +568,15 @@ Since we are subsetting only 1000 papers with the most citations in the top 10 v
 
 ![](figures/graph6.png)
 
-## 5.4 Improvements
+## 7. Improvements
+
+**Exploratory Analysis**
+
+- The issue about citations equal to 50 should be handled better. We can try using data from external sources to join and correct the citations because the frequency of this abnormality is so high that it affects several patterns and analysis that we perform.
+- References data should be more correct. Since we found that the references given in this dataset are obviously incorrect for several papers. The should be another data sources or method to create better lists of references. For example, we can go through the shrunk of pdf files and generate them ourselves, but that would be too much computation for the data cleaning process.
+- If we have data of the time (year) that a paper is cited, we would be able to find some interesting patterns and answer questions such as "Within the same time interval, how much impact does a paper create?"
+
+**Interactive Component**
 
 - It would be interesting to see how each researcher has an influence on other research or topics. However, this will require some data mangling as the data we have is not center around people, but around papers.
 Visualize other data subset such as specific subfield.
@@ -536,14 +584,19 @@ Visualize other data subset such as specific subfield.
 - Find ways to incorporate time into the visualization, like how a paper grows over time. This would probably require a subset with a relationship graph with a center around a specific paper since we would be required to have a large sample of paper that references a single paper to see any temporal effect.
 - Since the number of edges grow exponentially in number of nodes, it is the reason why we can only show 1000 nodes in the visualization. Removing the edge will greatly reduce the computational requirement and allow us to see more nodes, but at a cost of not being able to see direct relationships.
 
-# 6. Conclusion
+# 8. Conclusion
 
 One trend that is clear from the data analysis is that computer science is in its maturity. However, the area of research within computer science itself is still shifting, most notably are the shift from Signal and Speech processing to Artificial Intelligence. Furthermore, from our interactive visualization, we are able to see the flaws in our analysis such as the use of citation as our core metric for impact and not optimal subsetting of data. However, the interactive graph is a capable tool in to explore a topic in computer science, since by clicking on a node, we can see how that knowledge is being use and allow the reader to dive deeper into that subfield.
 
 Even though our analysis have answer many question we have, it has also create questions in itself. For example, the title length and citation analysis have shown that there is a correlation between short title and number of citation, however, we do not know if this is a causal relationship. Another interesting observation is the fact that papers from 30 years ago seem to be getting the most citation, but is it because paper in an infancy of a subject is more likely to be impactful, or because the time allow people to discover and use it?
 
-# 7. Citation
+# 9. Citation and Resources
 
-Jie Tang, Jing Zhang, Limin Yao, Juanzi Li, Li Zhang, and Zhong Su. ArnetMiner: Extraction and Mining of Academic Social Networks. In Proceedings of the Fourteenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (SIGKDD'2008). pp.990-998.
+Jie Tang, Jing Zhang, Limin Yao, Juanzi Li, Li Zhang, and Zhong Su. "ArnetMiner: Extraction and Mining of Academic Social Networks." In Proceedings of the Fourteenth ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (SIGKDD'2008), 990-998, 2008.
 
-Deng, Boer. “Papers with Shorter Titles Get More Citations.” Nature News, Nature Publishing Group, 16 Aug. 2015, www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246.
+Deng, Boer. Papers with Shorter Titles Get More Citations. Nature News, Nature Publishing Group, 2015. <http://www.nature.com/news/papers-with-shorter-titles-get-more-citations-1.18246>.
+
+D. Blei, A. Ng, and M. Jordan. Latent Dirichlet allocation. Journal of Machine Learning Research, 3:993–1022, 2003. <http://www.jmlr.org/papers/volume3/blei03a/blei03a.pdf>.
+
+This project Github repository.
+<https://github.com/tniyomkarn/arxiv-data-exploration>
