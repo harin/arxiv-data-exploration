@@ -101,7 +101,7 @@ papers <- read_feather(path)
 
 ## 3.1 Python preprocessing
 
-The raw data downloaded from the source is in line-separated JSON format. We first read the data, convert it into a data frame format, and perform data cleaning using python. From 8 columns, we remove the *abstract* column out because the column contains very long string which consumes large memory and is difficult to interpret and visualize. There are two columns that contain numeric values, **n_citation** and **year**. The **authors** and **references** column contain lists of string values which we convert to string in comma-separated format. The remaining three columns, **id**, **title** and **venue**, has string type values.
+The raw data downloaded from the source is in line-separated JSON format. We first read the data, convert it into a data frame format, and perform data cleaning using python. From 8 columns, we remove the *abstract* column out because the column contains very long string which consumes large amount of memory and is difficult to interpret and visualize. There are two columns that contain numeric values, **n_citation** and **year**. The **authors** and **references** column contain lists of string values which we convert to string in comma-separated format. The remaining three columns, **id**, **title** and **venue**, has string type values.
 
 As mentioned earlier, we then subset data by selecting the papers from 10 venues with the highest citations for further analysis.
 
@@ -262,7 +262,7 @@ The median of number of references is as low as 1 which makes us doubt the corre
  
 ## 3.10 *topic* column
 
-**topic** is a categorical string column containing 6 unique values which we generate using the title column.
+**topic** is a categorical string column containing 5 unique values which we generate using the title column.
 
 ```{r, echo = TRUE, message=FALSE, warning=FALSE}
 ggplot(data=papers, aes(fct_rev(fct_infreq(topic)))) +
@@ -459,7 +459,7 @@ The dot plot shows the relationship between average number of citations and titl
 
 The goal of this report is to assess trend in computer science and how advancement is being gain -- is it through regular contribution from individuals or a leap that is caused by certain paper irregularly. To this end, we have decided the number of paper in each topic is representative of the level of attention it is getting, while the number of citation a paper gets is representative of the influence it has. Due to the large number of paper in the dataset, we have narrowed down the analysis to the papers from the top 10 publication venues by the total number of citation their papers received. This resulted in 140,000 papers.
 
-As the first thing you see being reading any paper, the title is undoubtedly an important attribute. We have analyze the title length with the number of citations it received and have found that short paper receives more citation with significance. Note that this does not mean shorter paper will get more citation, it just means that shorter paper often have more citation.
+As the first thing you see before reading any paper, the title is undoubtedly an important attribute. We have analyze the title length with the number of citations it received and have found that short paper receives more citation with significance. Note that this does not mean shorter paper will get more citation, it just means that shorter paper often have more citation.
 
 ```{r, message=FALSE, warning=FALSE}
 ggplot(title_length_citation, aes(x=title_length, y=mean_citation)) +
@@ -540,7 +540,7 @@ Upon opening the webpage, you will be presented with a graph with nodes represen
 ![](figures/graph2.png)
 
 
-Clicking on a node reveal its title, year published, author, and the number of citations it received. Since the subset of data we are visualizing is an outlier in term of number of citations, the citation value do not spread out evenly. If we were to have the radius of the circle be proportional to the number of citation, it would result in a couple of huge circle that fills the page with other small ones that are not visible. Instead, we have chosen to use a log scale so we can roughly see the ranking of the paper by citation, while keeping the circle relatively similar in size.
+Clicking on a node reveals its title, year published, author, and the number of citations it received. Since the subset of data we are visualizing is an outlier in term of number of citations, the citation value do not spread out evenly. If we were to have the radius of the circle be proportional to the number of citation, it would result in a couple of huge circles that fill the page with other small ones that are not visible. Instead, we have chosen to use a log scale so we can roughly see the ranking of the paper by citation, while keeping the circle relatively similar in size.
 
 ## 6.2 Data Limitations and Consideration
 
@@ -548,7 +548,7 @@ Since we are subsetting only 1000 papers with the most citations in the top 10 v
 
 ## 6.3 Observations
 
-- The use of graph to visualize relationships between papers have revealed many observations that would have not been obvious otherwise. Here are some notable observations:
+The use of graph to visualize relationships between papers have revealed many observations that would have not been obvious otherwise. Here are some notable observations:
 
 - The number of citation it receives does not mean that it is highly cited by other highly cited papers. Compare the two graphs below. Both paper have over 20 thousand citations, however, the first one is much more highly referenced in other highly cited paper.
 
@@ -573,20 +573,20 @@ Since we are subsetting only 1000 papers with the most citations in the top 10 v
 **Exploratory Analysis**
 
 - The issue about citations equal to 50 should be handled better. We can try using data from external sources to join and correct the citations because the frequency of this abnormality is so high that it affects several patterns and analysis that we perform.
-- References data should be more correct. Since we found that the references given in this dataset are obviously incorrect for several papers. The should be another data sources or method to create better lists of references. For example, we can go through the shrunk of pdf files and generate them ourselves, but that would be too much computation for the data cleaning process.
-- If we have data of the time (year) that a paper is cited, we would be able to find some interesting patterns and answer questions such as "Within the same time interval, how much impact does a paper create?"
+- References data should be more correct. Since we found that the references given in this dataset are obviously incorrect for several papers. There should be another data sources or method to create better lists of references. For example, we can go through the shrunk of pdf files and generate them ourselves, but that would be too much computation for the data cleaning process.
+- It would be interesting to see what pattern emerges if we incorporate the publish year of each paper on the citation data. For example, we could ask a question like "within the same time interval, how much impact does a paper create?"
 
 **Interactive Component**
 
 - It would be interesting to see how each researcher has an influence on other research or topics. However, this will require some data mangling as the data we have is not center around people, but around papers.
-Visualize other data subset such as specific subfield.
+- Visualize other data subset such as specific subfield.
 - Fine tuning force layout parameter might allow us to better visualize cluster and interactions among them.
 - Find ways to incorporate time into the visualization, like how a paper grows over time. This would probably require a subset with a relationship graph with a center around a specific paper since we would be required to have a large sample of paper that references a single paper to see any temporal effect.
 - Since the number of edges grow exponentially in number of nodes, it is the reason why we can only show 1000 nodes in the visualization. Removing the edge will greatly reduce the computational requirement and allow us to see more nodes, but at a cost of not being able to see direct relationships.
 
 # 8. Conclusion
 
-One trend that is clear from the data analysis is that computer science is in its maturity. However, the area of research within computer science itself is still shifting, most notably are the shift from Signal and Speech processing to Artificial Intelligence. Furthermore, from our interactive visualization, we are able to see the flaws in our analysis such as the use of citation as our core metric for impact and not optimal subsetting of data. However, the interactive graph is a capable tool to explore a topic in computer science, since by clicking on a node, we can see how that knowledge is being use and allow the reader to dive deeper into that subfield.
+One trend that is clear from the data analysis is that computer science is in its maturity. However, the area of research within computer science itself is still shifting, most notably are the shift from Signal and Speech processing to Artificial Intelligence as the dominant area of research. Furthermore, from our interactive visualization, we are able to see the flaws in our analysis such as the use of citation as our core metric for impact and  nonoptimal subsetting of data. However, the interactive graph is a capable tool to explore a topic in computer science, since by clicking on a node, we can see how that knowledge is being use and allow the reader to dive deeper into that subfield.
 
 Even though our analysis have answer many question we have, it has also create questions in itself. For example, the title length and citation analysis have shown that there is a correlation between short title and number of citation, however, we do not know if this is a causal relationship. Another interesting observation is the fact that papers from 30 years ago seem to be getting the most citation, but is it because paper in an infancy of a subject is more likely to be impactful, or because the passage of time that allow people to discover and use it?
 
